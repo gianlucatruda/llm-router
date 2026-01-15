@@ -1,9 +1,12 @@
 """Main FastAPI application for LLM Router."""
+
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from database import init_db
 from routers import chat, conversations, usage
 

@@ -1,6 +1,10 @@
 """LLM client for interacting with OpenAI API."""
-from typing import AsyncGenerator, List, Dict, Any
+
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from openai import AsyncOpenAI
+
 from config import settings
 
 
@@ -11,10 +15,7 @@ class LLMClient:
         self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
 
     async def stream_chat(
-        self,
-        provider: str,
-        model: str,
-        messages: List[Dict[str, str]]
+        self, provider: str, model: str, messages: list[dict[str, str]]
     ) -> AsyncGenerator[str, None]:
         """
         Stream chat completions from the specified provider.
@@ -34,9 +35,7 @@ class LLMClient:
             raise ValueError(f"Unsupported provider: {provider}")
 
     async def _stream_openai(
-        self,
-        model: str,
-        messages: List[Dict[str, str]]
+        self, model: str, messages: list[dict[str, str]]
     ) -> AsyncGenerator[str, None]:
         """Stream completions from OpenAI API."""
         try:
@@ -51,15 +50,11 @@ class LLMClient:
                     yield chunk.choices[0].delta.content
 
         except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+            raise Exception(f"OpenAI API error: {str(e)}") from e
 
     async def get_completion_metadata(
-        self,
-        provider: str,
-        model: str,
-        messages: List[Dict[str, str]],
-        completion: str
-    ) -> Dict[str, Any]:
+        self, provider: str, model: str, messages: list[dict[str, str]], completion: str
+    ) -> dict[str, Any]:
         """
         Get token usage metadata for a completion.
         This is called after streaming to get accurate token counts.
@@ -67,16 +62,14 @@ class LLMClient:
         if provider == "openai":
             # For OpenAI, we'll use tiktoken to estimate tokens
             import tiktoken
+
             try:
                 encoding = tiktoken.encoding_for_model(model)
             except KeyError:
                 encoding = tiktoken.get_encoding("cl100k_base")
 
             # Count input tokens
-            input_tokens = sum(
-                len(encoding.encode(msg["content"]))
-                for msg in messages
-            )
+            input_tokens = sum(len(encoding.encode(msg["content"])) for msg in messages)
 
             # Count output tokens
             output_tokens = len(encoding.encode(completion))

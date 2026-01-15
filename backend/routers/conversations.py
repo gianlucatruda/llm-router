@@ -1,34 +1,30 @@
 """Conversation management endpoints."""
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from database import get_db, Conversation, Message
+
+from database import Conversation, Message, get_db
 from models import (
-    ConversationResponse,
     ConversationListItem,
+    ConversationResponse,
     CreateConversationRequest,
 )
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
 
-@router.get("", response_model=List[ConversationListItem])
+@router.get("", response_model=list[ConversationListItem])
 async def list_conversations(db: AsyncSession = Depends(get_db)):
     """List all conversations, sorted by most recent first."""
-    result = await db.execute(
-        select(Conversation).order_by(Conversation.updated_at.desc())
-    )
+    result = await db.execute(select(Conversation).order_by(Conversation.updated_at.desc()))
     conversations = result.scalars().all()
     return conversations
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
-async def get_conversation(
-    conversation_id: str,
-    db: AsyncSession = Depends(get_db)
-):
+async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
     """Get a specific conversation with all messages."""
     result = await db.execute(
         select(Conversation)
@@ -48,8 +44,7 @@ async def get_conversation(
 
 @router.post("", response_model=ConversationResponse)
 async def create_conversation(
-    request: CreateConversationRequest,
-    db: AsyncSession = Depends(get_db)
+    request: CreateConversationRequest, db: AsyncSession = Depends(get_db)
 ):
     """Create a new conversation."""
     conversation = Conversation(
@@ -64,14 +59,9 @@ async def create_conversation(
 
 
 @router.delete("/{conversation_id}")
-async def delete_conversation(
-    conversation_id: str,
-    db: AsyncSession = Depends(get_db)
-):
+async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a conversation and all its messages."""
-    result = await db.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
     conversation = result.scalar_one_or_none()
 
     if not conversation:
@@ -84,10 +74,7 @@ async def delete_conversation(
 
 
 @router.post("/{conversation_id}/clone", response_model=ConversationResponse)
-async def clone_conversation(
-    conversation_id: str,
-    db: AsyncSession = Depends(get_db)
-):
+async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
     """Clone a conversation with all its messages."""
     # Get original conversation with messages
     result = await db.execute(

@@ -71,6 +71,12 @@ uv sync                          # Install/sync dependencies
 uv run uvicorn main:app --reload # Run dev server with hot reload
 uv run uvicorn main:app --host 0.0.0.0 --port 8000  # Run on specific host/port
 
+# Linting and Type Checking
+uv run ruff check .              # Lint code
+uv run ruff check . --fix        # Auto-fix linting issues
+uv run ruff format .             # Format code
+uvx ty check                     # Type check with ty (Astral's type checker)
+
 # Frontend
 cd frontend
 npm install                      # Install dependencies
@@ -82,6 +88,9 @@ npm run preview                  # Preview production build
 # Terminal 1: cd backend && uv run uvicorn main:app --reload
 # Terminal 2: cd frontend && npm run dev
 # Access: http://localhost:5173 (Vite proxies /api to backend)
+
+# Pre-commit checks (run before committing)
+cd backend && uv run ruff check . --fix && uv run ruff format . && uvx ty check
 ```
 
 ### Production

@@ -1,25 +1,24 @@
 """Chat API endpoints with SSE streaming."""
+
 import json
 from datetime import datetime
-from typing import List, Dict
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db, Conversation, Message
+
+from config import get_provider
+from database import Conversation, Message, get_db
 from models import ChatRequest
 from services.llm_client import llm_client
 from services.usage_tracker import calculate_cost, log_usage
-from config import get_provider
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/stream")
-async def stream_chat(
-    request: ChatRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     """
     Stream chat completion via Server-Sent Events.
 
@@ -56,7 +55,9 @@ async def stream_chat(
                 content=request.message,
             )
             db.add(user_message)
-            await db.flush()
+
+            # Commit conversation and user message before streaming
+            await db.commit()
 
             # Load conversation history
             result = await db.execute(
@@ -67,9 +68,8 @@ async def stream_chat(
             messages = result.scalars().all()
 
             # Convert to OpenAI format
-            message_history: List[Dict[str, str]] = [
-                {"role": msg.role, "content": msg.content}
-                for msg in messages
+            message_history: list[dict[str, str]] = [
+                {"role": msg.role, "content": msg.content} for msg in messages
             ]
 
             # Stream completion
@@ -77,9 +77,7 @@ async def stream_chat(
             assistant_content = ""
 
             async for token in llm_client.stream_chat(
-                provider=provider,
-                model=request.model,
-                messages=message_history
+                provider=provider, model=request.model, messages=message_history
             ):
                 assistant_content += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
@@ -89,7 +87,7 @@ async def stream_chat(
                 provider=provider,
                 model=request.model,
                 messages=message_history,
-                completion=assistant_content
+                completion=assistant_content,
             )
 
             tokens_input = metadata["tokens_input"]
@@ -110,20 +108,32 @@ async def stream_chat(
 
             # Update conversation timestamp
             conversation.updated_at = int(datetime.now().timestamp())
-            await db.flush()
 
             # Log usage
             await log_usage(
+                db=db,
                 conversation_id=conversation.id,
                 model=request.model,
                 tokens_input=tokens_input,
                 tokens_output=tokens_output,
             )
 
+            # Commit all changes to database
+            await db.commit()
+
             # Send completion event
-            yield f"data: {json.dumps({{'done': True, 'conversation_id': conversation.id, 'cost': cost, 'tokens': tokens_input + tokens_output}})}\n\n"
+            completion_data = {
+                'done': True,
+                'conversation_id': conversation.id,
+                'cost': cost,
+                'tokens': tokens_input + tokens_output
+            }
+            yield f"data: {json.dumps(completion_data)}\n\n"
 
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"ERROR in stream_chat: {error_details}")  # Log to console
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(
@@ -132,5 +142,5 @@ async def stream_chat(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-        }
+        },
     )

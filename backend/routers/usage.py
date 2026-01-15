@@ -1,11 +1,12 @@
 """Usage statistics endpoints."""
-from typing import List
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db, UsageLog
-from models import UsageSummary, ModelInfo
+
 from config import MODELS
+from database import UsageLog, get_db
+from models import ModelInfo, UsageSummary
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 
@@ -52,7 +53,7 @@ async def get_usage_summary(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/models", response_model=List[ModelInfo])
+@router.get("/models", response_model=list[ModelInfo])
 async def get_available_models():
     """Get list of available models with pricing info."""
     models = []

@@ -47,6 +47,9 @@ cd backend && uv sync && uv run uvicorn main:app --reload
 
 # Frontend
 cd frontend && npm install && npm run dev
+
+# Lint & type check (before committing)
+cd backend && uv run ruff check . --fix && uvx ty check
 ```
 
 ### Production (Pi 5 / VPS)

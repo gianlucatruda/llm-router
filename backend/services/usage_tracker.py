@@ -1,6 +1,7 @@
 """Usage tracking and cost calculation."""
+
 from config import get_model_config, get_provider
-from database import UsageLog, async_session_maker
+from database import UsageLog
 
 
 def calculate_cost(model: str, tokens_input: int, tokens_output: int) -> float:
@@ -22,6 +23,7 @@ def calculate_cost(model: str, tokens_input: int, tokens_output: int) -> float:
 
 
 async def log_usage(
+    db,
     conversation_id: str,
     model: str,
     tokens_input: int,
@@ -31,6 +33,7 @@ async def log_usage(
     Log usage to the database.
 
     Args:
+        db: Database session
         conversation_id: Conversation ID
         model: Model identifier
         tokens_input: Number of input tokens
@@ -39,14 +42,12 @@ async def log_usage(
     provider = get_provider(model)
     cost = calculate_cost(model, tokens_input, tokens_output)
 
-    async with async_session_maker() as session:
-        usage_log = UsageLog(
-            conversation_id=conversation_id,
-            model=model,
-            provider=provider,
-            tokens_input=tokens_input,
-            tokens_output=tokens_output,
-            cost=cost,
-        )
-        session.add(usage_log)
-        await session.commit()
+    usage_log = UsageLog(
+        conversation_id=conversation_id,
+        model=model,
+        provider=provider,
+        tokens_input=tokens_input,
+        tokens_output=tokens_output,
+        cost=cost,
+    )
+    db.add(usage_log)

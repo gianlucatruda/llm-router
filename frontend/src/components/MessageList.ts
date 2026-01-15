@@ -60,7 +60,7 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
     messageEl.appendChild(contentEl);
 
     // Add metadata if available
-    if (message.cost !== undefined) {
+    if (message.cost !== undefined && message.cost !== null) {
       const metaEl = document.createElement('div');
       metaEl.className = 'message-meta';
       const tokens = (message.tokens_input || 0) + (message.tokens_output || 0);

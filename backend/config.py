@@ -1,6 +1,8 @@
 """Configuration management for LLM Router."""
+
+from typing import Any
+
 from pydantic_settings import BaseSettings
-from typing import Dict, Any
 
 
 class Settings(BaseSettings):
@@ -10,13 +12,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""  # Optional for v0
     database_path: str = "./data/llm-router.db"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+    }
 
 
 # Model configurations with pricing ($/1K tokens)
-MODELS: Dict[str, Dict[str, Any]] = {
+MODELS: dict[str, dict[str, Any]] = {
     "openai": {
         "gpt-4o": {
             "name": "GPT-4o",
@@ -37,7 +40,7 @@ MODELS: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_model_config(model: str) -> Dict[str, Any]:
+def get_model_config(model: str) -> dict[str, Any]:
     """Get configuration for a specific model."""
     for provider_models in MODELS.values():
         if model in provider_models:
