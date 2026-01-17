@@ -13,6 +13,7 @@ from services.llm_client import llm_client
 
 OPENAI_PREFIXES = ("gpt-", "o1", "o3")
 ANTHROPIC_PREFIXES = ("claude",)
+OPENAI_EXCLUDE_SUBSTRINGS = ("audio", "realtime")
 
 
 def _matches_prefix(model_id: str, prefixes: Iterable[str]) -> bool:
@@ -24,11 +25,16 @@ def _merge_models(
 ) -> list[ModelInfo]:
     models: list[ModelInfo] = []
     live_set = set(live_models or [])
+    allow_fallback_only = not live_models
     if live_models:
         for model_id in sorted(live_set):
             if provider == "openai" and not _matches_prefix(model_id, OPENAI_PREFIXES):
                 continue
             if provider == "anthropic" and not _matches_prefix(model_id, ANTHROPIC_PREFIXES):
+                continue
+            if provider == "openai" and any(part in model_id for part in OPENAI_EXCLUDE_SUBSTRINGS):
+                continue
+            if model_id not in fallback and not _allow_live_only(provider, model_id):
                 continue
             fallback_meta = fallback.get(model_id, {})
             inferred = _infer_capabilities(provider, model_id)
@@ -41,17 +47,20 @@ def _merge_models(
                     output_cost=fallback_meta.get("output_cost", 0),
                     source="live",
                     pricing_source="fallback" if model_id in fallback else "unknown",
+                    available=True,
                     supports_reasoning=fallback_meta.get(
                         "supports_reasoning", inferred["supports_reasoning"]
                     ),
-                    reasoning_levels=fallback_meta.get("reasoning_levels", inferred["reasoning_levels"]),
+                    reasoning_levels=fallback_meta.get(
+                        "reasoning_levels", inferred["reasoning_levels"]
+                    ),
                     supports_temperature=fallback_meta.get(
                         "supports_temperature", inferred["supports_temperature"]
                     ),
                 )
             )
     for model_id, meta in fallback.items():
-        if model_id in live_set:
+        if not allow_fallback_only and model_id in live_set:
             continue
         models.append(
             ModelInfo(
@@ -62,6 +71,7 @@ def _merge_models(
                 output_cost=meta["output_cost"],
                 source="fallback",
                 pricing_source="fallback",
+                available=allow_fallback_only or model_id in live_set,
                 supports_reasoning=meta.get("supports_reasoning", False),
                 reasoning_levels=meta.get("reasoning_levels", []),
                 supports_temperature=meta.get("supports_temperature", True),
@@ -89,6 +99,12 @@ def _infer_capabilities(provider: str, model_id: str) -> dict[str, Any]:
         "reasoning_levels": [],
         "supports_temperature": True,
     }
+
+
+def _allow_live_only(provider: str, model_id: str) -> bool:
+    if provider != "openai":
+        return False
+    return model_id.startswith(("gpt-4o", "gpt-4.1", "gpt-4", "gpt-3.5"))
 
 
 async def _fetch_openai_models() -> list[str] | None:

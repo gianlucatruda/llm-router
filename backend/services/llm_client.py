@@ -42,9 +42,7 @@ class LLMClient:
             ):
                 yield token
         elif provider == "anthropic":
-            async for token in self._stream_anthropic(
-                model, messages, temperature, reasoning
-            ):
+            async for token in self._stream_anthropic(model, messages, temperature, reasoning):
                 yield token
         else:
             raise ValueError(f"Unsupported provider: {provider}")
@@ -83,15 +81,26 @@ class LLMClient:
     ) -> AsyncGenerator[str, None]:
         """Stream completions from Anthropic API."""
         try:
+            system_prompt = " ".join(
+                msg["content"] for msg in messages if msg.get("role") == "system"
+            ).strip()
+            filtered_messages = [
+                msg for msg in messages if msg.get("role") in {"user", "assistant"}
+            ]
             params: dict[str, Any] = {
                 "model": model,
-                "messages": messages,
+                "messages": filtered_messages,
                 "max_tokens": 1024,
             }
             if temperature is not None:
                 params["temperature"] = temperature
+            system_bits = []
+            if system_prompt:
+                system_bits.append(system_prompt)
             if reasoning:
-                params["system"] = f"Reasoning level: {reasoning}."
+                system_bits.append(f"Reasoning level: {reasoning}.")
+            if system_bits:
+                params["system"] = "\n".join(system_bits)
 
             stream = await self.anthropic_client.messages.create(**params, stream=True)
             async for event in stream:
@@ -116,10 +125,14 @@ class LLMClient:
     async def _stream_openai_responses(
         self, model: str, messages: list[dict[str, str]], temperature: float | None
     ) -> AsyncGenerator[str, None]:
-        prompt = "\n".join(f"{msg['role']}: {msg['content']}" for msg in messages)
+        input_items = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in messages
+            if msg.get("content")
+        ]
         params: dict[str, Any] = {
             "model": model,
-            "input": prompt,
+            "input": input_items,
             "stream": True,
         }
         if temperature is not None:
@@ -175,7 +188,7 @@ class LLMClient:
 
 
 def _use_responses_api(model: str) -> bool:
-    return model.startswith(("gpt-5", "o1", "o3"))
+    return model.lower().startswith(("gpt-5", "o1", "o3"))
 
 
 # Singleton instance

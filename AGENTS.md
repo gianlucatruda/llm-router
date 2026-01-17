@@ -51,8 +51,18 @@ This project follows specific design principles and tooling preferences:
 - **Frontend dev server**: run `npm install` in `frontend`, then `npm run dev`
 - **Playwright UX smoke**: `node scripts/ux-smoke.js` (takes screenshots in `docs/screenshots/`)
 - **Extended UX smoke**: `node scripts/ux-extended.js` (cloning + refresh persistence checks)
+- **Model matrix UX**: `node scripts/ux-matrix.js` (model/reasoning combinations)
+- **Manual UX helper**: `node scripts/ux-manual.js`
 - **API smoke**: `node scripts/api-smoke.js`
+- **Image smoke**: `node scripts/image-smoke.js`
 - Use real API keys from `.env` for live testing (no mocks for v1)
+
+### Formatting & Checks (Run Often)
+- **Backend format**: `cd backend && uv run ruff format .`
+- **Backend type check**: `cd backend && uvx ty check`
+- **Frontend build**: `cd frontend && npm run build`
+- Reminder: run these frequently while developing and before claiming a feature is done.
+- Note: in sandboxed runs, `uvx` may panic; rerun `uvx ty check` outside the sandbox if needed.
 
 ### What to Avoid
 - Heavy frameworks when vanilla JS suffices

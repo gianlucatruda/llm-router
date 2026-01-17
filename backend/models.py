@@ -74,6 +74,7 @@ class ModelInfo(BaseModel):
     output_cost: float
     source: str
     pricing_source: str
+    available: bool
     supports_reasoning: bool
     reasoning_levels: list[str]
     supports_temperature: bool

@@ -27,6 +27,21 @@ A retro terminal-inspired, mobile-first web application that routes queries thro
 - Show overall stats (tokens + cost est.).
 - Persistence is device-scoped (survives refresh, even if localStorage cleared).
 
+## v2 Requirements (Working Spec)
+
+### Background Processing
+- Submit requests to the backend, return immediately with a pending message.
+- Process in background so responses complete even if device is offline.
+- Resume by polling when the UI is reopened.
+- Device/session identity via localStorage (cookie fallback).
+
+### Commands + Media
+- `/system` to append per-conversation system text.
+- `/image` for OpenAI image generation (DALL·E 2/3, gpt-image-1).
+
+### Deployment
+- Docker Compose must be simple and robust for homelab usage (few-line add-on in existing compose).
+
 ## Core Requirements
 
 ### Must Have

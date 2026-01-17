@@ -29,7 +29,11 @@ async function run() {
   await page.fill('.message-input', 'Write two lines about neon rain.');
   await page.keyboard.press('Enter');
   log('sent poetry');
-  await page.waitForTimeout(2500);
+  await page.waitForFunction(() => {
+    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
+      .some((el) => (el.textContent || '').includes('pending'));
+    return !pending;
+  }, { timeout: 15000 });
 
   await page.click('.menu-button');
   await page.waitForSelector('.panel-overlay.visible');

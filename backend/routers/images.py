@@ -44,6 +44,13 @@ async def generate_image(request: ImageRequest, db: AsyncSession = Depends(get_d
     url = await llm_client.generate_image(
         prompt=request.prompt, model=request.model, size=request.size
     )
+    user_message = Message(
+        conversation_id=conversation.id,
+        role="user",
+        content=f"/image {request.prompt} model={request.model} size={request.size}",
+        status="complete",
+    )
+    db.add(user_message)
     message = Message(
         conversation_id=conversation.id,
         role="assistant",

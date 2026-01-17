@@ -6,13 +6,14 @@ import { store } from '../state/store';
 import * as api from '../api';
 import { createSidebar } from './Sidebar';
 import { createModelSelector } from './ModelSelector';
-import { createMessageList, renderMessages, renderStreamingMessage } from './MessageList';
+import { createMessageList, renderMessages } from './MessageList';
 import { createMessageInput } from './MessageInput';
 import { getCommandHelp, getCommandSuggestions, parseCommand } from '../commands';
-import type { ModelCatalog, ModelInfo, Message, UsageSummary } from '../types';
+import type { ModelCatalog, ModelInfo, Message } from '../types';
 
 let models: ModelInfo[] = [];
 let catalogDefaults: ModelCatalog['defaults'] | null = null;
+let pollTimer: number | null = null;
 
 export async function createChatInterface(): Promise<HTMLElement> {
   const app = document.createElement('div');
@@ -34,6 +35,7 @@ export async function createChatInterface(): Promise<HTMLElement> {
         output_cost: 0.03,
         source: 'fallback',
         pricing_source: 'fallback',
+        available: true,
         supports_reasoning: true,
         reasoning_levels: ['low', 'medium', 'high'],
         supports_temperature: true,
@@ -88,17 +90,21 @@ export async function createChatInterface(): Promise<HTMLElement> {
     store.getState().selectedModel,
     store.getState().temperature,
     store.getState().reasoning,
+    store.getState().usageDevice,
+    store.getState().usageOverall,
     handleModelChange
   );
   chatArea.appendChild(modelSelector);
 
-  const statsPanel = createStatsPanel();
-  chatArea.appendChild(statsPanel);
-
   const messageList = createMessageList();
   chatArea.appendChild(messageList);
 
-  const messageInput = createMessageInput(handleSendMessage, handleCommand, getSuggestions);
+  const messageInput = createMessageInput(
+    handleSendMessage,
+    handleCommand,
+    getSuggestions,
+    (direction) => store.navigateHistory(direction)
+  );
   chatArea.appendChild(messageInput);
 
   mainContainer.appendChild(chatArea);
@@ -112,6 +118,7 @@ export async function createChatInterface(): Promise<HTMLElement> {
   // Load initial data
   await loadConversations();
   await loadUsage();
+  checkPendingPoll();
 
   return app;
 }
@@ -218,15 +225,11 @@ function render(app: HTMLElement): void {
       state.selectedModel,
       state.temperature,
       state.reasoning,
+      state.usageDevice,
+      state.usageOverall,
       handleModelChange
     );
     selectorContainer.replaceWith(newSelector);
-  }
-
-  // Update stats panel
-  const stats = app.querySelector('.stats-panel') as HTMLElement;
-  if (stats) {
-    stats.replaceWith(createStatsPanel());
   }
 
   // Update messages
@@ -278,6 +281,11 @@ function handleModelChange(modelId: string): void {
   if (!selected) {
     return;
   }
+  if (!selected.available) {
+    store.setError('Model availability is unverified for this API key.');
+  } else {
+    store.setError(null);
+  }
   if (selected.reasoning_levels.length > 0 && !selected.reasoning_levels.includes(store.getState().reasoning)) {
     store.setReasoning(selected.reasoning_levels[0]);
   }
@@ -291,6 +299,7 @@ async function handleSelectConversation(id: string): Promise<void> {
     const conversation = await api.getConversation(id);
     store.setCurrentConversation(conversation);
     store.setSidebarOpen(false);
+    checkPendingPoll();
   } catch (error) {
     store.setError('Failed to load conversation');
   }
@@ -333,16 +342,18 @@ async function handleSendMessage(message: string): Promise<void> {
     content: message,
     created_at: Date.now() / 1000,
   };
+  store.addHistory(message);
   store.addMessage(userMessage);
 
-  // Create empty assistant message for streaming
+  // Create pending assistant message
   const assistantMessage: Message = {
     id: `temp-${Date.now()}-assistant`,
     role: 'assistant',
-    content: '',
+    content: 'Processing...',
     model: state.selectedModel,
-    temperature: effectiveTemp,
+    temperature: effectiveTemp ?? undefined,
     reasoning: effectiveReasoning || undefined,
+    status: 'pending',
     created_at: Date.now() / 1000,
   };
   store.addMessage(assistantMessage);
@@ -350,36 +361,20 @@ async function handleSendMessage(message: string): Promise<void> {
   store.setStreaming(true);
   store.setError(null);
 
-  let streamedContent = '';
-  const messageList = document.querySelector('#messages') as HTMLElement;
-
   try {
-    await api.streamChat(
+    const response = await api.submitChat(
       message,
       state.selectedModel,
       state.currentConversation?.id || null,
       effectiveTemp,
       effectiveReasoning,
-      (token) => {
-        streamedContent += token;
-        renderStreamingMessage(messageList, streamedContent, formatMeta(assistantMessage));
-      },
-      async (data) => {
-        store.setStreaming(false);
-        await loadConversations();
-        await loadUsage();
-
-        // Reload conversation to get updated messages
-        if (data.conversation_id) {
-          const conversation = await api.getConversation(data.conversation_id);
-          store.setCurrentConversation(conversation);
-        }
-      },
-      (error) => {
-        store.setStreaming(false);
-        store.setError(`Error: ${error}`);
-      }
+      state.pendingSystem || null
     );
+    store.clearSystemText();
+    await loadConversations();
+    const conversation = await api.getConversation(response.conversation_id);
+    store.setCurrentConversation(conversation);
+    startPolling(response.conversation_id);
   } catch (error) {
     store.setStreaming(false);
     store.setError(error instanceof Error ? error.message : 'Unknown error');
@@ -387,6 +382,7 @@ async function handleSendMessage(message: string): Promise<void> {
 }
 
 function handleCommand(input: string): boolean {
+  store.addHistory(input);
   const parsed = parseCommand(input);
   if (!parsed) {
     store.setError('Unknown command. Type /help.');
@@ -394,6 +390,7 @@ function handleCommand(input: string): boolean {
   }
   if (parsed.id === 'help') {
     addSystemMessage(getCommandHelp());
+    store.setError(null);
     return true;
   }
   if (parsed.id === 'model') {
@@ -419,6 +416,7 @@ function handleCommand(input: string): boolean {
     }
     store.setTemperature(value);
     addSystemMessage(`Temperature set to **${value.toFixed(2)}**.`);
+    store.setError(null);
     return true;
   }
   if (parsed.id === 'reasoning') {
@@ -434,6 +432,21 @@ function handleCommand(input: string): boolean {
     }
     store.setReasoning(selected);
     addSystemMessage(`Reasoning set to **${selected}**.`);
+    store.setError(null);
+    return true;
+  }
+  if (parsed.id === 'system') {
+    if (!parsed.arg.trim()) {
+      store.setError('System text cannot be empty.');
+      return true;
+    }
+    store.appendSystemText(parsed.arg.trim());
+    addSystemMessage('System text appended for this conversation.');
+    store.setError(null);
+    return true;
+  }
+  if (parsed.id === 'image') {
+    void handleImageCommand(parsed.arg);
     return true;
   }
   return false;
@@ -447,20 +460,6 @@ function addSystemMessage(content: string): void {
     created_at: Date.now() / 1000,
   };
   store.addMessage(systemMessage);
-}
-
-function formatMeta(message: Message): string {
-  const parts: string[] = [];
-  if (message.model) {
-    parts.push(message.model);
-  }
-  if (message.temperature !== undefined && message.temperature !== null) {
-    parts.push(`temp ${message.temperature.toFixed(2)}`);
-  }
-  if (message.reasoning) {
-    parts.push(`reasoning ${message.reasoning}`);
-  }
-  return parts.join(' • ');
 }
 
 function findModel(query: string): ModelInfo | null {
@@ -495,33 +494,82 @@ function getActiveModel(): ModelInfo | null {
   return models.find((model) => model.id === store.getState().selectedModel) || null;
 }
 
-function createStatsPanel(): HTMLElement {
-  const panel = document.createElement('div');
-  panel.className = 'stats-panel';
-  const overall = renderUsageBlock('Overall', store.getState().usageOverall);
-  const device = renderUsageBlock('This device', store.getState().usageDevice);
-  panel.appendChild(device);
-  panel.appendChild(overall);
-  return panel;
+async function handleImageCommand(raw: string): Promise<void> {
+  const state = store.getState();
+  const { prompt, model, size } = parseImageArgs(raw);
+  if (!prompt) {
+    store.setError('Image prompt cannot be empty.');
+    return;
+  }
+  store.setStreaming(true);
+  try {
+    const result = await api.generateImage(
+      prompt,
+      model,
+      size,
+      state.currentConversation?.id || null
+    );
+    await loadConversations();
+    const conversation = await api.getConversation(result.conversation_id);
+    store.setCurrentConversation(conversation);
+    store.setError(null);
+  } catch (error) {
+    store.setError(error instanceof Error ? error.message : 'Image generation failed');
+  } finally {
+    store.setStreaming(false);
+  }
 }
 
-function renderUsageBlock(label: string, usage: UsageSummary | null): HTMLElement {
-  const block = document.createElement('div');
-  block.className = 'stats-block';
-  const title = document.createElement('div');
-  title.className = 'stats-title';
-  title.textContent = label;
-  const body = document.createElement('div');
-  body.className = 'stats-body';
-  if (!usage) {
-    body.textContent = 'Loading...';
-  } else {
-    const tokens = (usage.total_tokens_input + usage.total_tokens_output).toLocaleString();
-    body.textContent = `${tokens} tokens • $${usage.total_cost.toFixed(4)}`;
+function parseImageArgs(raw: string): { prompt: string; model: string; size: string } {
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  let model = 'dall-e-3';
+  let size = '1024x1024';
+  const promptParts: string[] = [];
+  tokens.forEach((token) => {
+    if (token.startsWith('model=')) {
+      model = token.split('=')[1] || model;
+      return;
+    }
+    if (token.startsWith('size=')) {
+      size = token.split('=')[1] || size;
+      return;
+    }
+    promptParts.push(token);
+  });
+  return { prompt: promptParts.join(' '), model, size };
+}
+
+function startPolling(conversationId: string): void {
+  if (pollTimer) {
+    window.clearTimeout(pollTimer);
   }
-  block.appendChild(title);
-  block.appendChild(body);
-  return block;
+  const poll = async () => {
+    try {
+      const conversation = await api.getConversation(conversationId);
+      store.setCurrentConversation(conversation);
+      const pending = conversation.messages?.some((msg) => msg.status === 'pending');
+      if (pending) {
+        pollTimer = window.setTimeout(poll, 2000);
+      } else {
+        store.setStreaming(false);
+        await loadUsage();
+      }
+    } catch (error) {
+      pollTimer = window.setTimeout(poll, 3000);
+    }
+  };
+  pollTimer = window.setTimeout(poll, 1500);
+}
+
+function checkPendingPoll(): void {
+  const current = store.getState().currentConversation;
+  if (!current) {
+    return;
+  }
+  const pending = current.messages?.some((msg) => msg.status === 'pending');
+  if (pending) {
+    startPolling(current.id);
+  }
 }
 
 function syncDefaults(): void {

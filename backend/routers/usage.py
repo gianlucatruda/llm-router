@@ -41,7 +41,8 @@ async def get_usage_summary(
             func.sum(UsageLog.tokens_output).label("tokens_output"),
             func.sum(UsageLog.cost).label("cost"),
             func.count(UsageLog.id).label("requests"),
-        ).where(*filters)
+        )
+        .where(*filters)
         .group_by(UsageLog.model)
     )
     by_model = {

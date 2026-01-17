@@ -58,14 +58,22 @@ async function run() {
   await page.keyboard.press('Enter');
   log('sent haiku message');
 
-  await page.waitForTimeout(2500);
+  await page.waitForFunction(() => {
+    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
+      .some((el) => (el.textContent || '').includes('pending'));
+    return !pending;
+  }, { timeout: 15000 });
   const assistantContent = await page.$eval('.message.assistant .message-content', (el) => el.textContent || '');
   log(`assistant content length: ${assistantContent.trim().length}`);
 
   await page.fill('.message-input', 'Return a JavaScript function that sums an array.');
   await page.keyboard.press('Enter');
   log('sent code request');
-  await page.waitForTimeout(2500);
+  await page.waitForFunction(() => {
+    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
+      .some((el) => (el.textContent || '').includes('pending'));
+    return !pending;
+  }, { timeout: 15000 });
 
   const codeBlocks = await page.$$eval('pre code', (items) => items.length);
   log(`code blocks found: ${codeBlocks}`);

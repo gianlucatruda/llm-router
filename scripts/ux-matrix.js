@@ -7,7 +7,7 @@ const cases = [
   { model: 'o1', reasoning: 'low', temp: '0.0', expectReasoning: true },
   { model: 'o3', reasoning: 'high', temp: '0.0', expectReasoning: true },
   { model: 'gpt-4o', reasoning: 'low', temp: '0.7', expectReasoning: false },
-  { model: 'claude-3-5-sonnet-20241022', reasoning: 'low', temp: '0.5', expectReasoning: false },
+  { model: 'claude-3-5-sonnet-20240620', reasoning: 'low', temp: '0.5', expectReasoning: false },
 ];
 
 async function run() {
@@ -29,11 +29,14 @@ async function run() {
     await page.fill('.message-input', `/reasoning ${test.reasoning}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
-    const errorText = await page.$eval('.error-banner span', (el) => el.textContent || '');
-    if (test.expectReasoning && errorText.trim()) {
-      log(`unexpected reasoning error: ${errorText.trim()}`);
+    const errorState = await page.$eval('.error-banner', (el) => ({
+      visible: getComputedStyle(el).display !== 'none',
+      text: (el.querySelector('span')?.textContent || '').trim(),
+    }));
+    if (test.expectReasoning && errorState.visible) {
+      log(`unexpected reasoning error: ${errorState.text}`);
     }
-    if (!test.expectReasoning && !errorText.trim()) {
+    if (!test.expectReasoning && !errorState.visible) {
       log('expected reasoning error but none shown');
     }
 
@@ -43,7 +46,11 @@ async function run() {
 
     await page.fill('.message-input', `Quick check for ${test.model}.`);
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(2500);
+    await page.waitForFunction(() => {
+      const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
+        .some((el) => (el.textContent || '').includes('pending'));
+      return !pending;
+    }, { timeout: 15000 });
 
     const meta = await page.$eval('.message.assistant:last-child .message-meta', (el) => el.textContent || '');
     log(`meta: ${meta.trim()}`);

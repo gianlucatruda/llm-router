@@ -1,14 +1,16 @@
 # LLM Router
 
-A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired UI.
+A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired, mobile-first UI.
 
 ## Features
 
 - **Retro terminal-inspired, aesthetic UI** built mobile-first
-- **Multiple LLM providers** - OpenAI (v0), Anthropic coming in v1
-- **Real-time streaming** - Token-by-token responses via Server-Sent Events
+- **Multiple LLM providers** - OpenAI and Anthropic with dynamic model catalog
+- **Background processing** - Submit a request and return later to the result
+- **Slash commands** - `/model`, `/temp`, `/reasoning`, `/system`, `/image`, `/help`
 - **Conversation management** - Create, view, delete, and clone conversations
-- **Usage tracking** - Track token usage and costs per model
+- **Usage tracking** - Track token usage and costs per model (device + overall)
+- **Image generation** - `/image` for DALL-E and gpt-image
 - **Single container deployment** - One command to run everything
 - **Portable** - Works identically on Raspberry Pi 5 and VPS
 
@@ -102,13 +104,18 @@ ANTHROPIC_API_KEY=sk-ant-...
 DATABASE_PATH=./data/llm-router.db
 ```
 
-### Supported Models (v0)
+### Supported Models
 
-| Model | Provider | Input Cost | Output Cost |
-|-------|----------|------------|-------------|
-| GPT-4o | OpenAI | $0.0025/1K | $0.01/1K |
-| GPT-4 Turbo | OpenAI | $0.01/1K | $0.03/1K |
-| GPT-3.5 Turbo | OpenAI | $0.0005/1K | $0.0015/1K |
+Models are fetched dynamically from OpenAI and Anthropic when available, with a fallback list for offline or unsupported keys.
+
+### Slash Commands
+
+- `/help` - Show available commands and tips
+- `/model <name|id>` - Switch model (autocomplete available)
+- `/temp <0-2>` - Set temperature (only for supported models)
+- `/reasoning <low|medium|high>` - Set reasoning level (only for supported models)
+- `/system <text>` - Append to the per-conversation system prompt
+- `/image <prompt> [model=...] [size=...]` - Generate an image (OpenAI only)
 
 ## Architecture
 
@@ -146,6 +153,7 @@ llm-router/
 ### Chat
 
 - `POST /api/chat/stream` - Stream chat completion (SSE)
+- `POST /api/chat/submit` - Background chat completion
 
 ### Conversations
 
@@ -159,6 +167,10 @@ llm-router/
 
 - `GET /api/usage/summary` - Get usage statistics
 - `GET /api/usage/models` - List available models
+
+### Images
+
+- `POST /api/images/generate` - Generate an image from a prompt
 
 ## Development
 
@@ -189,15 +201,12 @@ docker run -p 8000:8000 --env-file .env llm-router
 ## Roadmap
 
 ### v0 (Current)
-- ✅ OpenAI integration
-- ✅ Streaming responses
-- ✅ Conversation management
-- ✅ Usage tracking
+- ✅ OpenAI + Anthropic integration
+- ✅ Streaming responses + background processing
+- ✅ Slash commands and per-conversation system prompts
+- ✅ Usage tracking (device + overall)
 - ✅ Retro terminal-inspired, mobile-first UI
 - ✅ Single-container deployment
-
-### v1 (Next)
-- [ ] Anthropic/Claude support
 - [ ] Conversation search
 - [ ] Dark mode toggle
 - [ ] Export conversations (JSON, Markdown)
@@ -207,6 +216,11 @@ docker run -p 8000:8000 --env-file .env llm-router
 - [ ] TUI-inspired Tokyo Night aesthetic
 - [ ] Slash commands (/model, /temp, /reasoning, /help)
 - [ ] Per-session + overall stats with device persistence
+
+### v2 (Planned)
+- [ ] Background processing (submit + poll, works offline)
+- [ ] `/system` and `/image` commands
+- [ ] Robust Docker Compose for homelab deployment
 
 ### v2 (Future)
 - [ ] Usage analytics dashboard

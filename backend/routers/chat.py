@@ -19,7 +19,9 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/stream")
-async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
+async def stream_chat(
+    request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Stream chat completion via Server-Sent Events.
 
@@ -136,15 +138,16 @@ async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSess
 
             # Send completion event
             completion_data = {
-                'done': True,
-                'conversation_id': conversation.id,
-                'cost': cost,
-                'tokens': tokens_input + tokens_output
+                "done": True,
+                "conversation_id": conversation.id,
+                "cost": cost,
+                "tokens": tokens_input + tokens_output,
             }
             yield f"data: {json.dumps(completion_data)}\n\n"
 
         except Exception as e:
             import traceback
+
             error_details = traceback.format_exc()
             print(f"ERROR in stream_chat: {error_details}")  # Log to console
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -308,9 +311,7 @@ async def run_background_completion(
                 await session.commit()
 
 
-async def build_message_history(
-    db: AsyncSession, conversation_id: str
-) -> list[dict[str, str]]:
+async def build_message_history(db: AsyncSession, conversation_id: str) -> list[dict[str, str]]:
     result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -326,7 +327,11 @@ async def build_message_history(
     if system_prompt:
         message_history.append({"role": "system", "content": system_prompt})
     message_history.extend(
-        {"role": msg.role, "content": msg.content} for msg in messages if msg.role != "system"
+        {"role": msg.role, "content": msg.content}
+        for msg in messages
+        if msg.role != "system"
+        and msg.content
+        and msg.status not in {"pending", "error"}
     )
     return message_history
 

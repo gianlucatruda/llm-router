@@ -64,6 +64,18 @@ Purpose: capture decisions, test runs, issues, and fixes so work can resume clea
   - `2026-01-17T18-28-42-034Z-after-long-thread.png`
   - `2026-01-17T18-28-42-034Z-after-reload.png`
 
+## 2026-02-01 (v2 testing pass)
+### Issues
+- Anthropic model `claude-3-5-sonnet-20240620` returns 404 on current key; shown as error in UI meta.
+  - Catalog now marks non-live models as `available=false` and UI shows `unverified`.
+
+### Test Runs
+- `node scripts/ux-matrix.js`: OpenAI models OK; Anthropic sonnet fails on current key (expected).
+- `node scripts/image-smoke.js`: OpenAI image generation OK (DALL·E 3).
+- `node scripts/ux-smoke.js`: submit/poll flow OK after fixes.
+- `node scripts/ux-smoke.js`: spacing adjustments verified across mobile/tablet/desktop.
+- `node scripts/ux-matrix.js`: Anthropic system prompt role handling fixed; sonnet still unavailable on current key.
+
 ### Issues & Fixes
 - Issue: sessions close button not always visible for automated click; updated test to close overlay safely.
 - Issue: last conversation not restored on refresh; fixed by storing `currentConversationId` and restoring on load.

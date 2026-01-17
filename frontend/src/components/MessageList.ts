@@ -33,7 +33,7 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
   if (messages.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
-    empty.textContent = 'Type your first command to start the session';
+    empty.textContent = 'Type /help for commands';
     container.appendChild(empty);
     return;
   }
@@ -142,6 +142,9 @@ export function renderStreamingMessage(
 
 function formatMeta(message: Message): string {
   const parts: string[] = [];
+  if (message.status && message.status !== 'complete') {
+    parts.push(message.status);
+  }
   if (message.model) {
     parts.push(message.model);
   }

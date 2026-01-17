@@ -15,7 +15,11 @@ function screenshotPath(label) {
 }
 
 async function waitForAssistant(page) {
-  await page.waitForTimeout(3500);
+  await page.waitForFunction(() => {
+    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
+      .some((el) => (el.textContent || '').includes('pending'));
+    return !pending;
+  }, { timeout: 15000 });
 }
 
 async function run() {

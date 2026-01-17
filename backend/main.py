@@ -41,6 +41,7 @@ app.include_router(conversations.router)
 app.include_router(usage.router)
 app.include_router(images.router)
 
+
 @app.middleware("http")
 async def device_id_middleware(request: Request, call_next):
     device_id = request.cookies.get("device_id")

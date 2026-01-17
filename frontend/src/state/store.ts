@@ -46,6 +46,11 @@ class Store {
   setCurrentConversation(conversation: Conversation | null): void {
     this.state.currentConversation = conversation;
     this.state.messages = conversation?.messages || [];
+    this.state.activeHistoryKey = conversation?.id || 'new';
+    if (!this.state.historyIndexByConversation[this.state.activeHistoryKey]) {
+      this.state.historyIndexByConversation[this.state.activeHistoryKey] =
+        this.state.historyByConversation[this.state.activeHistoryKey]?.length || 0;
+    }
     if (conversation) {
       localStorage.setItem('currentConversationId', conversation.id);
     } else {
@@ -87,6 +92,41 @@ class Store {
   setUsage(usage: { overall: UsageSummary; device: UsageSummary }): void {
     this.state.usageOverall = usage.overall;
     this.state.usageDevice = usage.device;
+    this.notify();
+  }
+
+  addHistory(entry: string): void {
+    const value = entry.trim();
+    if (!value) {
+      return;
+    }
+    const key = this.state.activeHistoryKey;
+    const history = this.state.historyByConversation[key] || [];
+    history.push(value);
+    this.state.historyByConversation[key] = history;
+    this.state.historyIndexByConversation[key] = history.length;
+    this.notify();
+  }
+
+  navigateHistory(direction: number): string | null {
+    const key = this.state.activeHistoryKey;
+    const history = this.state.historyByConversation[key] || [];
+    if (history.length === 0) {
+      return null;
+    }
+    const currentIndex = this.state.historyIndexByConversation[key] ?? history.length;
+    const nextIndex = Math.min(Math.max(currentIndex + direction, 0), history.length);
+    this.state.historyIndexByConversation[key] = nextIndex;
+    if (nextIndex === history.length) {
+      return '';
+    }
+    return history[nextIndex];
+  }
+
+  resetHistoryIndex(): void {
+    const key = this.state.activeHistoryKey;
+    const history = this.state.historyByConversation[key] || [];
+    this.state.historyIndexByConversation[key] = history.length;
     this.notify();
   }
 
@@ -136,6 +176,9 @@ export const store = new Store({
   temperature: Number.isFinite(savedTemp) ? savedTemp : 0.2,
   reasoning: savedReasoning,
   pendingSystem: '',
+  historyByConversation: {},
+  historyIndexByConversation: {},
+  activeHistoryKey: 'new',
   usageOverall: null,
   usageDevice: null,
   isStreaming: false,

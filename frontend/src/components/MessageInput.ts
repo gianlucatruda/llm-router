@@ -7,7 +7,8 @@ import type { CommandSuggestion } from '../commands';
 export function createMessageInput(
   onSend: (message: string) => void,
   onCommand: (input: string) => boolean,
-  getSuggestions: (input: string) => CommandSuggestion[]
+  getSuggestions: (input: string) => CommandSuggestion[],
+  onHistory: (direction: number) => string | null
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = 'input-area';
@@ -21,7 +22,7 @@ export function createMessageInput(
 
   const textarea = document.createElement('textarea');
   textarea.className = 'message-input';
-  textarea.placeholder = 'Type your message...';
+  textarea.placeholder = 'Type /help for help';
   textarea.rows = 1;
   textarea.setAttribute('aria-label', 'Message input');
 
@@ -43,6 +44,36 @@ export function createMessageInput(
 
   // Send on Enter, newline on Shift+Enter
   textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' && suggestionBox.style.display === 'none') {
+      const atStart = textarea.selectionStart === 0 && textarea.selectionEnd === 0;
+      if (atStart) {
+        e.preventDefault();
+        const value = onHistory(-1);
+        if (value !== null) {
+          textarea.value = value;
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          updateSuggestions();
+          updateSendState();
+        }
+        return;
+      }
+    }
+    if (e.key === 'ArrowDown' && suggestionBox.style.display === 'none') {
+      const atEnd =
+        textarea.selectionStart === textarea.value.length &&
+        textarea.selectionEnd === textarea.value.length;
+      if (atEnd) {
+        e.preventDefault();
+        const value = onHistory(1);
+        if (value !== null) {
+          textarea.value = value;
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+          updateSuggestions();
+          updateSendState();
+        }
+        return;
+      }
+    }
     if (e.key === 'ArrowDown' && suggestionBox.style.display !== 'none') {
       e.preventDefault();
       moveSelection(1);
@@ -74,6 +105,7 @@ export function createMessageInput(
         if (handled) {
           textarea.value = '';
           textarea.style.height = 'auto';
+          textarea.focus();
           updateSuggestions();
           updateSendState();
           return;
@@ -82,6 +114,7 @@ export function createMessageInput(
       onSend(message);
       textarea.value = '';
       textarea.style.height = 'auto';
+      textarea.focus();
       updateSuggestions();
       updateSendState();
     }

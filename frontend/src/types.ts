@@ -9,6 +9,7 @@ export interface Message {
   model?: string;
   temperature?: number;
   reasoning?: string;
+  status?: string;
   tokens_input?: number;
   tokens_output?: number;
   cost?: number;
@@ -42,6 +43,7 @@ export interface ModelInfo {
   output_cost: number;
   source: string;
   pricing_source: string;
+  available: boolean;
   supports_reasoning: boolean;
   reasoning_levels: string[];
   supports_temperature: boolean;
@@ -78,6 +80,9 @@ export interface AppState {
   temperature: number;
   reasoning: string;
   pendingSystem: string;
+  historyByConversation: Record<string, string[]>;
+  historyIndexByConversation: Record<string, number>;
+  activeHistoryKey: string;
   usageOverall: UsageSummary | null;
   usageDevice: UsageSummary | null;
   isStreaming: boolean;
