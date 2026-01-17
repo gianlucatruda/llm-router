@@ -1,4 +1,4 @@
-# LLM Router
+# LLM Router (v0.2 alpha)
 
 A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired, mobile-first UI.
 
@@ -7,6 +7,7 @@ A lightweight, self-hosted chat interface for routing queries through personal A
 - **Retro terminal-inspired, aesthetic UI** built mobile-first
 - **Multiple LLM providers** - OpenAI and Anthropic with dynamic model catalog
 - **Background processing** - Submit a request and return later to the result
+- **Realtime streaming when active** - Stream responses while the UI is open
 - **Slash commands** - `/model`, `/temp`, `/reasoning`, `/system`, `/image`, `/help`
 - **Conversation management** - Create, view, delete, and clone conversations
 - **Usage tracking** - Track token usage and costs per model (device + overall)
@@ -73,6 +74,21 @@ cd backend && uv run ruff check . --fix && uvx ty check
    docker-compose -f docker-compose.yml -f docker-compose.pi.yml up -d
    ```
 
+### Docker Compose (build from Git tag)
+
+Use this in your homelab `docker-compose.yml` to build directly from a tagged release:
+
+```yaml
+services:
+  llm-router:
+    build: https://github.com/gianlucatruda/llm-router.git#v0.2.0-alpha
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+```
+
 3. **Access**
    - http://your-pi-ip:8000
    - http://your-vps-ip:8000
@@ -97,7 +113,7 @@ Edit `.env`:
 # Required
 OPENAI_API_KEY=sk-proj-...
 
-# Optional (for v1)
+# Optional (for v0.2+)
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Database path (default: ./data/llm-router.db)
@@ -200,34 +216,24 @@ docker run -p 8000:8000 --env-file .env llm-router
 
 ## Roadmap
 
-### v0 (Current)
+### v0.2 (Current)
 - ✅ OpenAI + Anthropic integration
 - ✅ Streaming responses + background processing
 - ✅ Slash commands and per-conversation system prompts
+- ✅ Image generation (/image)
 - ✅ Usage tracking (device + overall)
 - ✅ Retro terminal-inspired, mobile-first UI
 - ✅ Single-container deployment
+
+### v0.3 (Planned)
 - [ ] Conversation search
-- [ ] Dark mode toggle
 - [ ] Export conversations (JSON, Markdown)
-- [ ] System prompts
-- [ ] Image/vision support
-- [ ] HTTPS via Caddy
-- [ ] TUI-inspired Tokyo Night aesthetic
-- [ ] Slash commands (/model, /temp, /reasoning, /help)
-- [ ] Per-session + overall stats with device persistence
-
-### v2 (Planned)
-- [ ] Background processing (submit + poll, works offline)
-- [ ] `/system` and `/image` commands
-- [ ] Robust Docker Compose for homelab deployment
-
-### v2 (Future)
+- [ ] Dark mode toggle
 - [ ] Usage analytics dashboard
-- [ ] Prompt templates
 - [ ] Multi-user support (optional)
 - [ ] Local model support (Ollama)
 - [ ] PWA for mobile install
+- [ ] HTTPS via Caddy
 
 ## Troubleshooting
 

@@ -32,7 +32,7 @@ This project follows specific design principles and tooling preferences:
 - **Lightweight and lean** - Prefer simple solutions over clever ones
 - **Explicit over implicit** - Clear code > terse code
 - **Avoid premature optimization** - Make it work, then make it fast
-- **No auth in v0** - Security via network isolation first
+- **No auth in v0.2** - Security via network isolation first
 - **Developer experience** - Fast iteration, hot reload, clear errors
 
 ### Deployment
@@ -45,6 +45,7 @@ This project follows specific design principles and tooling preferences:
 - **Local dev**: Native Python (uv) + Vite dev server (hot reload both)
 - **Production**: Single Docker container (frontend built into backend)
 - **No separate frontend server** - FastAPI serves static files in prod
+- **Docs discipline** - Keep `SPEC.md` updated with decisions and completed work as you go; move deferred items into v3.
 
 ### UX/Test Automation (Codex Sessions)
 - **Backend dev server**: run `uv sync` in `backend`, then `uv run uvicorn main:app --reload`
@@ -55,7 +56,7 @@ This project follows specific design principles and tooling preferences:
 - **Manual UX helper**: `node scripts/ux-manual.js`
 - **API smoke**: `node scripts/api-smoke.js`
 - **Image smoke**: `node scripts/image-smoke.js`
-- Use real API keys from `.env` for live testing (no mocks for v1)
+- Use real API keys from `.env` for live testing (no mocks for v0.2)
 
 ### Formatting & Checks (Run Often)
 - **Backend format**: `cd backend && uv run ruff format .`
@@ -76,8 +77,8 @@ This project follows specific design principles and tooling preferences:
 ### Future Considerations
 - Keep options open for Coolify/CapRover deployment
 - Design for easy VPS migration
-- Consider adding Caddy for HTTPS in v1
-- May add Anthropic in v1, but OpenAI-only for v0
+- Consider adding Caddy for HTTPS in v0.3
+- Anthropic support is included in v0.2
 
 ## Quick Command Reference
 
@@ -149,6 +150,33 @@ cd frontend
 npm test
 ```
 
+## Full Test Suite (Run Before Release)
+
+```bash
+# Backend lint/format/type check
+cd backend
+uv run ruff check . --fix
+uv run ruff format .
+PYTHONPATH=. uvx ty check
+
+# Frontend typecheck/build
+cd frontend
+npm run build
+
+# API smoke
+cd ..
+node scripts/api-smoke.js
+
+# Image smoke
+node scripts/image-smoke.js
+
+# UX / Playwright (screenshots saved to docs/screenshots/)
+node scripts/ux-smoke.js
+node scripts/ux-extended.js
+node scripts/ux-matrix.js
+node scripts/ux-manual.js
+```
+
 ## Project Structure
 
 ```
@@ -209,7 +237,7 @@ llm-router/
    - Calculates tokens/cost, logs usage
 
 4. **services/llm_client.py** - LLM API abstraction
-   - Unified interface for OpenAI (and Anthropic in v1)
+   - Unified interface for OpenAI and Anthropic
    - Async streaming support
    - Token counting with tiktoken
 
@@ -329,7 +357,7 @@ Required:
 - `OPENAI_API_KEY` - OpenAI API key
 
 Optional:
-- `ANTHROPIC_API_KEY` - Anthropic API key (v1)
+- `ANTHROPIC_API_KEY` - Anthropic API key
 - `DATABASE_PATH` - SQLite database path (default: `./data/llm-router.db`)
 
 ## Deployment
@@ -459,27 +487,26 @@ SELECT * FROM conversations;
 ## Security Considerations
 
 - API keys in environment variables (not committed)
-- No auth in v0 (rely on network security)
+- No auth in v0.2 (rely on network security)
 - SQLite file permissions
 - CORS restricted to localhost in dev
 - No XSS (markdown sanitization via marked.js)
 
 ## Future Enhancements
 
-### v1
+### v0.2
 - Anthropic/Claude support
-- Conversation search
 - System prompts
+- Image generation
+
+### v0.3
+- Conversation search
 - Export conversations
 - Dark mode
-- Image/vision support
-
-### v2
-- Multi-user with auth
 - Usage analytics dashboard
+- Multi-user with auth
 - Local models (Ollama)
 - PWA support
-- Voice input
 
 ## Troubleshooting
 

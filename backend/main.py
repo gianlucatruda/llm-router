@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LLM Router",
     description="Self-hosted chat interface for multiple LLM providers",
-    version="0.1.0",
+    version="0.2.0-alpha",
     lifespan=lifespan,
 )
 
@@ -44,12 +44,14 @@ app.include_router(images.router)
 
 @app.middleware("http")
 async def device_id_middleware(request: Request, call_next):
-    device_id = request.cookies.get("device_id")
+    header_id = request.headers.get("x-device-id")
+    device_id = header_id or request.cookies.get("device_id")
     if not device_id:
         device_id = str(uuid.uuid4())
+    device_id = device_id.strip()
     request.state.device_id = device_id
     response = await call_next(request)
-    if "device_id" not in request.cookies:
+    if request.cookies.get("device_id") != device_id:
         response.set_cookie("device_id", device_id, samesite="lax")
     return response
 

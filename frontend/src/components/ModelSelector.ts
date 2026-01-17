@@ -11,83 +11,74 @@ export function createModelSelector(
   reasoning: string,
   usageDevice: UsageSummary | null,
   usageOverall: UsageSummary | null,
-  onChange: (model: string) => void
+  onCommand: (command: string) => void
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = 'model-selector-container';
 
-  const label = document.createElement('div');
-  label.className = 'model-selector-label';
-  label.textContent = 'Model';
-
-  const select = document.createElement('select');
-  select.className = 'model-selector';
-
-  // Group models by provider
-  const byProvider: Record<string, ModelInfo[]> = {};
-  models.forEach(model => {
-    if (!byProvider[model.provider]) {
-      byProvider[model.provider] = [];
-    }
-    byProvider[model.provider].push(model);
-  });
-
-  // Add options grouped by provider
-  Object.entries(byProvider).forEach(([provider, providerModels]) => {
-    const optgroup = document.createElement('optgroup');
-    optgroup.label = provider.charAt(0).toUpperCase() + provider.slice(1);
-
-    providerModels.forEach(model => {
-      const option = document.createElement('option');
-      option.value = model.id;
-      option.textContent = model.name;
-      option.selected = model.id === selectedModel;
-      optgroup.appendChild(option);
-    });
-
-    select.appendChild(optgroup);
-  });
+  const current = models.find((model) => model.id === selectedModel);
 
   const meta = document.createElement('div');
   meta.className = 'model-meta';
 
   const updateMeta = () => {
-    const current = models.find(model => model.id === select.value);
-    if (!current) {
+    const currentMeta = models.find(model => model.id === selectedModel);
+    if (!currentMeta) {
       meta.textContent = '';
       return;
     }
-    const provider = current.provider.charAt(0).toUpperCase() + current.provider.slice(1);
-    const pricing = current.input_cost || current.output_cost
-      ? `$${current.input_cost}/$${current.output_cost} per 1K`
+    const provider = currentMeta.provider.charAt(0).toUpperCase() + currentMeta.provider.slice(1);
+    const pricing = currentMeta.input_cost || currentMeta.output_cost
+      ? `$${currentMeta.input_cost}/$${currentMeta.output_cost} per 1K`
       : 'Pricing unknown';
-    const source = current.source === 'live' ? 'live' : 'fallback';
-    const availability = current.available ? 'available' : 'unverified';
+    const source = currentMeta.source === 'live' ? 'live' : 'fallback';
+    const availability = currentMeta.available ? 'available' : 'unverified';
     meta.textContent = `${provider} • ${pricing} • ${source} • ${availability}`;
   };
-
-  select.addEventListener('change', () => {
-    onChange(select.value);
-    updateMeta();
-  });
 
   updateMeta();
 
   const controls = document.createElement('div');
   controls.className = 'model-controls';
 
-  const current = models.find((model) => model.id === selectedModel);
-  const tempChip = document.createElement('div');
-  tempChip.className = 'control-chip';
-  tempChip.textContent = current?.supports_temperature ? `Temp ${temperature.toFixed(2)}` : 'Temp n/a';
+  const header = document.createElement('div');
+  header.className = 'model-header';
 
-  const reasoningChip = document.createElement('div');
-  reasoningChip.className = 'control-chip';
+  const modelButton = document.createElement('button');
+  modelButton.className = 'control-link';
+  modelButton.type = 'button';
+  modelButton.textContent = current ? `Model ${current.name}` : 'Model';
+  modelButton.addEventListener('click', () => {
+    onCommand('/model ');
+  });
+
+  header.appendChild(modelButton);
+
+  const tempChip = document.createElement('button');
+  tempChip.type = 'button';
+  tempChip.className = 'control-chip control-link';
+  tempChip.textContent = current?.supports_temperature ? `Temp ${temperature.toFixed(2)}` : 'Temp n/a';
+  tempChip.disabled = !current?.supports_temperature;
+  tempChip.addEventListener('click', () => {
+    if (current?.supports_temperature) {
+      onCommand('/temp ');
+    }
+  });
+
+  const reasoningChip = document.createElement('button');
+  reasoningChip.type = 'button';
+  reasoningChip.className = 'control-chip control-link';
   if (current && current.reasoning_levels.length > 0) {
     reasoningChip.textContent = `Reasoning ${reasoning}`;
   } else {
     reasoningChip.textContent = 'Reasoning n/a';
   }
+  reasoningChip.disabled = !(current && current.reasoning_levels.length > 0);
+  reasoningChip.addEventListener('click', () => {
+    if (current && current.reasoning_levels.length > 0) {
+      onCommand('/reasoning ');
+    }
+  });
 
   controls.appendChild(tempChip);
   controls.appendChild(reasoningChip);
@@ -103,8 +94,7 @@ export function createModelSelector(
   controls.appendChild(deviceChip);
   controls.appendChild(overallChip);
 
-  container.appendChild(label);
-  container.appendChild(select);
+  container.appendChild(header);
   container.appendChild(meta);
   container.appendChild(controls);
 

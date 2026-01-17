@@ -6,7 +6,7 @@ import { store } from '../state/store';
 import * as api from '../api';
 import { createSidebar } from './Sidebar';
 import { createModelSelector } from './ModelSelector';
-import { createMessageList, renderMessages } from './MessageList';
+import { createMessageList, renderMessages, renderStreamingMessage } from './MessageList';
 import { createMessageInput } from './MessageInput';
 import { getCommandHelp, getCommandSuggestions, parseCommand } from '../commands';
 import type { ModelCatalog, ModelInfo, Message } from '../types';
@@ -92,7 +92,7 @@ export async function createChatInterface(): Promise<HTMLElement> {
     store.getState().reasoning,
     store.getState().usageDevice,
     store.getState().usageOverall,
-    handleModelChange
+    openCommandInput
   );
   chatArea.appendChild(modelSelector);
 
@@ -140,11 +140,16 @@ function createHeader(): HTMLElement {
   const title = document.createElement('h1');
   title.textContent = 'LLM Router';
 
+  const version = document.createElement('span');
+  version.className = 'title-version';
+  version.textContent = 'v0.2 alpha';
+
   const subtitle = document.createElement('span');
   subtitle.className = 'title-sub';
   subtitle.textContent = 'terminal mode';
 
   titleWrap.appendChild(title);
+  titleWrap.appendChild(version);
   titleWrap.appendChild(subtitle);
 
   const status = document.createElement('div');
@@ -227,7 +232,7 @@ function render(app: HTMLElement): void {
       state.reasoning,
       state.usageDevice,
       state.usageOverall,
-      handleModelChange
+      openCommandInput
     );
     selectorContainer.replaceWith(newSelector);
   }
@@ -273,6 +278,11 @@ async function loadUsage(): Promise<void> {
 function handleNewChat(): void {
   store.setCurrentConversation(null);
   store.setSidebarOpen(false);
+  if (catalogDefaults) {
+    store.setSelectedModel(catalogDefaults.model);
+    store.setReasoning(catalogDefaults.reasoning);
+    store.setTemperature(catalogDefaults.temperature);
+  }
 }
 
 function handleModelChange(modelId: string): void {
@@ -334,6 +344,8 @@ async function handleSendMessage(message: string): Promise<void> {
   const effectiveTemp = model && !model.supports_temperature ? null : state.temperature;
   const effectiveReasoning =
     model && model.reasoning_levels.length > 0 ? state.reasoning : '';
+  const shouldStream = navigator.onLine && document.visibilityState === 'visible';
+  const messageList = document.querySelector('#messages') as HTMLElement | null;
 
   // Add user message to UI
   const userMessage: Message = {
@@ -345,11 +357,62 @@ async function handleSendMessage(message: string): Promise<void> {
   store.addHistory(message);
   store.addMessage(userMessage);
 
+  if (shouldStream) {
+    const assistantMessage: Message = {
+      id: `temp-${Date.now()}-assistant`,
+      role: 'assistant',
+      content: '',
+      model: state.selectedModel,
+      temperature: effectiveTemp ?? undefined,
+      reasoning: effectiveReasoning || undefined,
+      status: 'streaming',
+      created_at: Date.now() / 1000,
+    };
+    store.addMessage(assistantMessage);
+
+    store.setStreaming(true);
+    store.setError(null);
+    let streamed = '';
+
+    await api.streamChat(
+      message,
+      state.selectedModel,
+      state.currentConversation?.id || null,
+      effectiveTemp,
+      effectiveReasoning,
+      state.pendingSystem || null,
+      (token) => {
+        streamed += token;
+        if (messageList) {
+          renderStreamingMessage(
+            messageList,
+            streamed,
+            buildStreamingMeta(state.selectedModel, effectiveTemp, effectiveReasoning)
+          );
+        }
+      },
+      async (data) => {
+        await loadConversations();
+        const conversation = await api.getConversation(data.conversation_id);
+        store.setCurrentConversation(conversation);
+        store.setStreaming(false);
+        await loadUsage();
+      },
+      (error) => {
+        store.setStreaming(false);
+        store.setError(error);
+        store.appendToLastMessage(`Error: ${error}`);
+      }
+    );
+    store.clearSystemText();
+    return;
+  }
+
   // Create pending assistant message
   const assistantMessage: Message = {
     id: `temp-${Date.now()}-assistant`,
     role: 'assistant',
-    content: 'Processing...',
+    content: 'Queued...',
     model: state.selectedModel,
     temperature: effectiveTemp ?? undefined,
     reasoning: effectiveReasoning || undefined,
@@ -594,4 +657,27 @@ function syncDefaults(): void {
       store.setReasoning(currentModel.reasoning_levels[0]);
     }
   }
+}
+
+function openCommandInput(command: string): void {
+  const input = document.getElementById('input-area') as any;
+  if (input && input.setValue) {
+    input.setValue(command);
+  }
+}
+
+function buildStreamingMeta(
+  model: string,
+  temperature: number | null,
+  reasoning: string
+): string {
+  const parts = [model];
+  if (temperature !== null) {
+    parts.push(`temp ${temperature.toFixed(2)}`);
+  }
+  if (reasoning) {
+    parts.push(`reasoning ${reasoning}`);
+  }
+  parts.push('streaming');
+  return parts.join(' • ');
 }

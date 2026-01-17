@@ -5,15 +5,32 @@
 import type { Conversation, ConversationListItem, ModelCatalog, UsageSummary } from './types';
 
 const API_BASE = '/api';
+const DEVICE_KEY = 'llm-router-device-id';
+
+function getDeviceId(): string {
+  try {
+    const existing = localStorage.getItem(DEVICE_KEY);
+    if (existing) {
+      return existing;
+    }
+    const generated = crypto.randomUUID();
+    localStorage.setItem(DEVICE_KEY, generated);
+    return generated;
+  } catch (error) {
+    return 'unknown-device';
+  }
+}
 
 /**
  * Generic fetch wrapper with error handling
  */
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
+  const deviceId = getDeviceId();
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'X-Device-Id': deviceId,
       ...options?.headers,
     },
   });
@@ -35,15 +52,18 @@ export async function streamChat(
   conversationId: string | null,
   temperature: number | null,
   reasoning: string,
+  systemText: string | null,
   onToken: (token: string) => void,
   onComplete: (data: { conversation_id: string; cost: number; tokens: number }) => void,
   onError: (error: string) => void
 ): Promise<void> {
   try {
+    const deviceId = getDeviceId();
     const response = await fetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Device-Id': deviceId,
       },
       body: JSON.stringify({
         message,
@@ -51,6 +71,7 @@ export async function streamChat(
         conversation_id: conversationId,
         ...(temperature !== null ? { temperature } : {}),
         ...(reasoning ? { reasoning } : {}),
+        ...(systemText ? { system_text: systemText } : {}),
       }),
     });
 

@@ -12,6 +12,7 @@ export function createMessageInput(
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = 'input-area';
+  container.id = 'input-area';
 
   const inputContainer = document.createElement('div');
   inputContainer.className = 'input-container';
@@ -128,6 +129,15 @@ export function createMessageInput(
     updateSendState();
   }
 
+  function setValue(value: string) {
+    textarea.value = value;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    textarea.focus();
+    updateSuggestions();
+    updateSendState();
+  }
+
   function updateSendState() {
     const hasValue = textarea.value.trim().length > 0;
     sendButton.disabled = locked || !hasValue;
@@ -193,6 +203,7 @@ export function createMessageInput(
 
   // Expose methods
   (container as any).setDisabled = setDisabled;
+  (container as any).setValue = setValue;
 
   inputContainer.appendChild(prompt);
   inputContainer.appendChild(textarea);
