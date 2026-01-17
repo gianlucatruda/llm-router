@@ -19,9 +19,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies with uv
+RUN pip install --no-cache-dir uv
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy backend code
 COPY backend/ ./
@@ -36,4 +37,4 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

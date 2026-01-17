@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LLM Router",
     description="Self-hosted chat interface for multiple LLM providers",
-    version="0.2.0-alpha",
+    version="0.2.0",
     lifespan=lifespan,
 )
 

@@ -1,4 +1,4 @@
-# LLM Router (v0.2 alpha)
+# LLM Router (v0.2.0)
 
 A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired, mobile-first UI.
 
@@ -81,13 +81,15 @@ Use this in your homelab `docker-compose.yml` to build directly from a tagged re
 ```yaml
 services:
   llm-router:
-    build: https://github.com/gianlucatruda/llm-router.git#v0.2.0-alpha
+    build: https://github.com/gianlucatruda/llm-router.git#v0.2.0
     env_file: .env
     ports:
       - "8000:8000"
     volumes:
       - ./data:/app/data
 ```
+
+Note: the Dockerfile installs backend deps via `uv sync` using `backend/pyproject.toml` + `backend/uv.lock`.
 
 3. **Access**
    - http://your-pi-ip:8000

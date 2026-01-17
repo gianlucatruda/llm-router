@@ -32,7 +32,7 @@ This project follows specific design principles and tooling preferences:
 - **Lightweight and lean** - Prefer simple solutions over clever ones
 - **Explicit over implicit** - Clear code > terse code
 - **Avoid premature optimization** - Make it work, then make it fast
-- **No auth in v0.2** - Security via network isolation first
+- **No auth in v0.2.0** - Security via network isolation first
 - **Developer experience** - Fast iteration, hot reload, clear errors
 
 ### Deployment
@@ -56,7 +56,7 @@ This project follows specific design principles and tooling preferences:
 - **Manual UX helper**: `node scripts/ux-manual.js`
 - **API smoke**: `node scripts/api-smoke.js`
 - **Image smoke**: `node scripts/image-smoke.js`
-- Use real API keys from `.env` for live testing (no mocks for v0.2)
+- Use real API keys from `.env` for live testing (no mocks for v0.2.0)
 
 ### Formatting & Checks (Run Often)
 - **Backend format**: `cd backend && uv run ruff format .`
@@ -78,7 +78,7 @@ This project follows specific design principles and tooling preferences:
 - Keep options open for Coolify/CapRover deployment
 - Design for easy VPS migration
 - Consider adding Caddy for HTTPS in v0.3
-- Anthropic support is included in v0.2
+- Anthropic support is included in v0.2.0
 
 ## Quick Command Reference
 
@@ -175,6 +175,11 @@ node scripts/ux-smoke.js
 node scripts/ux-extended.js
 node scripts/ux-matrix.js
 node scripts/ux-manual.js
+
+# Docker build + smoke
+docker build -t llm-router:dev .
+docker run -p 8000:8000 --env-file .env llm-router:dev
+curl http://localhost:8000/health
 ```
 
 ## Project Structure
@@ -487,14 +492,14 @@ SELECT * FROM conversations;
 ## Security Considerations
 
 - API keys in environment variables (not committed)
-- No auth in v0.2 (rely on network security)
+- No auth in v0.2.0 (rely on network security)
 - SQLite file permissions
 - CORS restricted to localhost in dev
 - No XSS (markdown sanitization via marked.js)
 
 ## Future Enhancements
 
-### v0.2
+### v0.2.0
 - Anthropic/Claude support
 - System prompts
 - Image generation
