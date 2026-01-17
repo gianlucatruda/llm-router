@@ -12,7 +12,7 @@ Retro terminal-inspired, mobile-first web app that routes queries through person
 - **Providers**: OpenAI + Anthropic
 - **Identity**: Device-scoped usage tracking
 
-## v0.2.0 Requirements (Implemented)
+## v0.2 Requirements (Implemented)
 
 ### Visual + UX
 - Retro terminal-inspired, Tokyo Night aesthetic with Ubuntu Mono Nerd Font (CDN).
@@ -74,5 +74,5 @@ Retro terminal-inspired, mobile-first web app that routes queries through person
 
 ## Notes
 
-- No auth in v0.2.0/v0.3; rely on network isolation.
+- No auth in v0.2/v0.3; rely on network isolation.
 - Single container per environment; SQLite persists at `./data/llm-router.db`.

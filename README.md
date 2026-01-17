@@ -1,4 +1,4 @@
-# LLM Router (v0.2.0)
+# LLM Router
 
 A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired, mobile-first UI.
 
