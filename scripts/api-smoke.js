@@ -6,8 +6,9 @@ async function run() {
   const health = await fetch(`${BASE_URL}/health`).then((r) => r.text());
   log(`health: ${health.trim()}`);
 
-  const models = await fetch(`${BASE_URL}/api/usage/models`).then((r) => r.json());
-  log(`models: ${models.length}`);
+  const catalog = await fetch(`${BASE_URL}/api/usage/models`).then((r) => r.json());
+  log(`models: ${catalog.models.length}`);
+  log(`defaults: ${catalog.defaults.model} / ${catalog.defaults.reasoning}`);
 
   const conversations = await fetch(`${BASE_URL}/api/conversations`).then((r) => r.json());
   log(`conversations: ${conversations.length}`);

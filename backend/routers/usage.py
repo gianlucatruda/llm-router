@@ -1,19 +1,27 @@
 """Usage statistics endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import MODELS
 from database import UsageLog, get_db
-from models import ModelInfo, UsageSummary
+from models import ModelCatalog, UsageSummary
+from services.model_catalog import get_model_catalog
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
 
 
 @router.get("/summary", response_model=UsageSummary)
-async def get_usage_summary(db: AsyncSession = Depends(get_db)):
+async def get_usage_summary(
+    request: Request, scope: str = "overall", db: AsyncSession = Depends(get_db)
+):
     """Get overall usage summary with breakdown by model."""
+    if scope not in {"overall", "device"}:
+        scope = "overall"
+    device_id = getattr(request.state, "device_id", None)
+    filters = []
+    if scope == "device" and device_id:
+        filters.append(UsageLog.device_id == device_id)
 
     # Get total usage
     result = await db.execute(
@@ -21,7 +29,7 @@ async def get_usage_summary(db: AsyncSession = Depends(get_db)):
             func.sum(UsageLog.tokens_input).label("total_input"),
             func.sum(UsageLog.tokens_output).label("total_output"),
             func.sum(UsageLog.cost).label("total_cost"),
-        )
+        ).where(*filters)
     )
     totals = result.one()
 
@@ -33,7 +41,8 @@ async def get_usage_summary(db: AsyncSession = Depends(get_db)):
             func.sum(UsageLog.tokens_output).label("tokens_output"),
             func.sum(UsageLog.cost).label("cost"),
             func.count(UsageLog.id).label("requests"),
-        ).group_by(UsageLog.model)
+        ).where(*filters)
+        .group_by(UsageLog.model)
     )
     by_model = {
         row.model: {
@@ -53,19 +62,7 @@ async def get_usage_summary(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/models", response_model=list[ModelInfo])
+@router.get("/models", response_model=ModelCatalog)
 async def get_available_models():
     """Get list of available models with pricing info."""
-    models = []
-    for provider, provider_models in MODELS.items():
-        for model_id, config in provider_models.items():
-            models.append(
-                ModelInfo(
-                    id=model_id,
-                    name=config["name"],
-                    provider=provider,
-                    input_cost=config["input_cost"],
-                    output_cost=config["output_cost"],
-                )
-            )
-    return models
+    return await get_model_catalog()

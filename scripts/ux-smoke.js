@@ -26,6 +26,26 @@ async function run() {
   await page.screenshot({ path: screenshotPath('mobile-home') });
   log('loaded mobile view');
 
+  await page.fill('.message-input', '/help');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  log('sent /help');
+
+  await page.fill('.message-input', '/model gpt-5.1');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  log('switched model');
+
+  await page.fill('.message-input', '/temp 0.3');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  log('set temperature');
+
+  await page.fill('.message-input', '/reasoning low');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  log('set reasoning');
+
   await page.click('.menu-button');
   await page.waitForSelector('.panel-overlay.visible');
   await page.screenshot({ path: screenshotPath('mobile-sessions') });

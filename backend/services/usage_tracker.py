@@ -28,6 +28,7 @@ async def log_usage(
     model: str,
     tokens_input: int,
     tokens_output: int,
+    device_id: str | None,
 ) -> None:
     """
     Log usage to the database.
@@ -38,6 +39,7 @@ async def log_usage(
         model: Model identifier
         tokens_input: Number of input tokens
         tokens_output: Number of output tokens
+        device_id: Device identifier (cookie)
     """
     provider = get_provider(model)
     cost = calculate_cost(model, tokens_input, tokens_output)
@@ -49,5 +51,6 @@ async def log_usage(
         tokens_input=tokens_input,
         tokens_output=tokens_output,
         cost=cost,
+        device_id=device_id,
     )
     db.add(usage_log)

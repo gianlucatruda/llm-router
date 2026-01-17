@@ -44,20 +44,37 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
 
     const roleEl = document.createElement('div');
     roleEl.className = 'message-role';
-    roleEl.textContent = message.role === 'user' ? 'You' : 'Assistant';
+    roleEl.textContent =
+      message.role === 'user' ? 'You' : message.role === 'assistant' ? 'Assistant' : 'System';
 
     const contentEl = document.createElement('div');
     contentEl.className = 'message-content';
 
-    // Render markdown for assistant messages
-    if (message.role === 'assistant') {
+    // Render markdown for assistant/system messages
+    if (message.role === 'assistant' || message.role === 'system') {
       contentEl.innerHTML = marked.parse(message.content) as string;
     } else {
       contentEl.textContent = message.content;
     }
 
+    const copyButton = document.createElement('button');
+    copyButton.className = 'copy-button';
+    copyButton.textContent = 'Copy';
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(message.content);
+        copyButton.textContent = 'Copied';
+        setTimeout(() => {
+          copyButton.textContent = 'Copy';
+        }, 1500);
+      } catch (error) {
+        copyButton.textContent = 'Failed';
+      }
+    });
+
     messageEl.appendChild(roleEl);
     messageEl.appendChild(contentEl);
+    messageEl.appendChild(copyButton);
 
     // Add metadata if available
     if (message.cost !== undefined && message.cost !== null) {

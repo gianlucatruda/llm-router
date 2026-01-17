@@ -2,7 +2,7 @@
  * Simple reactive state management using Proxy
  */
 
-import type { AppState, ConversationListItem, Conversation, Message } from '../types';
+import type { AppState, ConversationListItem, Conversation, Message, UsageSummary } from '../types';
 
 type Listener = () => void;
 
@@ -72,6 +72,24 @@ class Store {
     this.notify();
   }
 
+  setTemperature(value: number): void {
+    this.state.temperature = value;
+    localStorage.setItem('temperature', value.toString());
+    this.notify();
+  }
+
+  setReasoning(value: string): void {
+    this.state.reasoning = value;
+    localStorage.setItem('reasoning', value);
+    this.notify();
+  }
+
+  setUsage(usage: { overall: UsageSummary; device: UsageSummary }): void {
+    this.state.usageOverall = usage.overall;
+    this.state.usageDevice = usage.device;
+    this.notify();
+  }
+
   setStreaming(isStreaming: boolean): void {
     this.state.isStreaming = isStreaming;
     this.notify();
@@ -94,13 +112,19 @@ class Store {
 }
 
 // Initialize store with default state
-const savedModel = localStorage.getItem('selectedModel') || 'gpt-4o';
+const savedModel = localStorage.getItem('selectedModel') || 'gpt-5.1';
+const savedTemp = Number(localStorage.getItem('temperature') || '0.2');
+const savedReasoning = localStorage.getItem('reasoning') || 'low';
 
 export const store = new Store({
   conversations: [],
   currentConversation: null,
   messages: [],
   selectedModel: savedModel,
+  temperature: Number.isFinite(savedTemp) ? savedTemp : 0.2,
+  reasoning: savedReasoning,
+  usageOverall: null,
+  usageDevice: null,
   isStreaming: false,
   error: null,
   sidebarOpen: false,

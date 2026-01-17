@@ -1,9 +1,10 @@
 """Main FastAPI application for LLM Router."""
 
 import os
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -38,6 +39,17 @@ app.add_middleware(
 app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(usage.router)
+
+@app.middleware("http")
+async def device_id_middleware(request: Request, call_next):
+    device_id = request.cookies.get("device_id")
+    if not device_id:
+        device_id = str(uuid.uuid4())
+    request.state.device_id = device_id
+    response = await call_next(request)
+    if "device_id" not in request.cookies:
+        response.set_cookie("device_id", device_id, samesite="lax")
+    return response
 
 
 @app.get("/health")

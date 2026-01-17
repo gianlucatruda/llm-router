@@ -7,6 +7,8 @@ import type { ModelInfo } from '../types';
 export function createModelSelector(
   models: ModelInfo[],
   selectedModel: string,
+  temperature: number,
+  reasoning: string,
   onChange: (model: string) => void
 ): HTMLElement {
   const container = document.createElement('div');
@@ -54,7 +56,11 @@ export function createModelSelector(
       return;
     }
     const provider = current.provider.charAt(0).toUpperCase() + current.provider.slice(1);
-    meta.textContent = `${provider} • $${current.input_cost}/$${current.output_cost} per 1K tokens`;
+    const pricing = current.input_cost || current.output_cost
+      ? `$${current.input_cost}/$${current.output_cost} per 1K`
+      : 'Pricing unknown';
+    const source = current.source === 'live' ? 'live' : 'fallback';
+    meta.textContent = `${provider} • ${pricing} • ${source}`;
   };
 
   select.addEventListener('change', () => {
@@ -64,9 +70,24 @@ export function createModelSelector(
 
   updateMeta();
 
+  const controls = document.createElement('div');
+  controls.className = 'model-controls';
+
+  const tempChip = document.createElement('div');
+  tempChip.className = 'control-chip';
+  tempChip.textContent = `Temp ${temperature.toFixed(2)}`;
+
+  const reasoningChip = document.createElement('div');
+  reasoningChip.className = 'control-chip';
+  reasoningChip.textContent = `Reasoning ${reasoning}`;
+
+  controls.appendChild(tempChip);
+  controls.appendChild(reasoningChip);
+
   container.appendChild(label);
   container.appendChild(select);
   container.appendChild(meta);
+  container.appendChild(controls);
 
   return container;
 }

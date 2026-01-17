@@ -6,7 +6,9 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
-    model: str = "gpt-4o"
+    model: str = "gpt-5.1"
+    temperature: float | None = None
+    reasoning: str | None = None
 
 
 class MessageResponse(BaseModel):
@@ -48,7 +50,7 @@ class ConversationListItem(BaseModel):
 
 class CreateConversationRequest(BaseModel):
     title: str
-    model: str = "gpt-4o"
+    model: str = "gpt-5.1"
 
 
 class UsageSummary(BaseModel):
@@ -64,3 +66,19 @@ class ModelInfo(BaseModel):
     provider: str
     input_cost: float
     output_cost: float
+    source: str
+    pricing_source: str
+    supports_reasoning: bool
+    reasoning_levels: list[str]
+    supports_temperature: bool
+
+
+class ModelDefaults(BaseModel):
+    model: str
+    reasoning: str
+    temperature: float
+
+
+class ModelCatalog(BaseModel):
+    defaults: ModelDefaults
+    models: list[ModelInfo]

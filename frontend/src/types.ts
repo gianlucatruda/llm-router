@@ -4,7 +4,7 @@
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   model?: string;
   tokens_input?: number;
@@ -36,6 +36,22 @@ export interface ModelInfo {
   provider: string;
   input_cost: number;
   output_cost: number;
+  source: string;
+  pricing_source: string;
+  supports_reasoning: boolean;
+  reasoning_levels: string[];
+  supports_temperature: boolean;
+}
+
+export interface ModelDefaults {
+  model: string;
+  reasoning: string;
+  temperature: number;
+}
+
+export interface ModelCatalog {
+  defaults: ModelDefaults;
+  models: ModelInfo[];
 }
 
 export interface UsageSummary {
@@ -55,6 +71,10 @@ export interface AppState {
   currentConversation: Conversation | null;
   messages: Message[];
   selectedModel: string;
+  temperature: number;
+  reasoning: string;
+  usageOverall: UsageSummary | null;
+  usageDevice: UsageSummary | null;
   isStreaming: boolean;
   error: string | null;
   sidebarOpen: boolean;

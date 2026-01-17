@@ -2,7 +2,7 @@
  * API client for backend communication
  */
 
-import type { Conversation, ConversationListItem, ModelInfo, UsageSummary } from './types';
+import type { Conversation, ConversationListItem, ModelCatalog, UsageSummary } from './types';
 
 const API_BASE = '/api';
 
@@ -33,6 +33,8 @@ export async function streamChat(
   message: string,
   model: string,
   conversationId: string | null,
+  temperature: number,
+  reasoning: string,
   onToken: (token: string) => void,
   onComplete: (data: { conversation_id: string; cost: number; tokens: number }) => void,
   onError: (error: string) => void
@@ -47,6 +49,8 @@ export async function streamChat(
         message,
         model,
         conversation_id: conversationId,
+        temperature,
+        reasoning,
       }),
     });
 
@@ -139,13 +143,13 @@ export async function cloneConversation(id: string): Promise<Conversation> {
 /**
  * Get available models
  */
-export async function getModels(): Promise<ModelInfo[]> {
-  return fetchJSON<ModelInfo[]>(`${API_BASE}/usage/models`);
+export async function getModelCatalog(): Promise<ModelCatalog> {
+  return fetchJSON<ModelCatalog>(`${API_BASE}/usage/models`);
 }
 
 /**
  * Get usage summary
  */
-export async function getUsageSummary(): Promise<UsageSummary> {
-  return fetchJSON<UsageSummary>(`${API_BASE}/usage/summary`);
+export async function getUsageSummary(scope: 'overall' | 'device'): Promise<UsageSummary> {
+  return fetchJSON<UsageSummary>(`${API_BASE}/usage/summary?scope=${scope}`);
 }

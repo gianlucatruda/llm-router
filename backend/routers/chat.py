@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/stream")
-async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """
     Stream chat completion via Server-Sent Events.
 
@@ -77,16 +77,26 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             assistant_content = ""
 
             async for token in llm_client.stream_chat(
-                provider=provider, model=request.model, messages=message_history
+                provider=provider,
+                model=request.model,
+                messages=message_history,
+                temperature=request.temperature,
+                reasoning=request.reasoning,
             ):
                 assistant_content += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
 
             # Get token counts and calculate cost
+            metadata_messages = message_history
+            if request.reasoning:
+                metadata_messages = [
+                    {"role": "system", "content": f"Reasoning level: {request.reasoning}."},
+                    *message_history,
+                ]
             metadata = await llm_client.get_completion_metadata(
                 provider=provider,
                 model=request.model,
-                messages=message_history,
+                messages=metadata_messages,
                 completion=assistant_content,
             )
 
@@ -116,6 +126,7 @@ async def stream_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 model=request.model,
                 tokens_input=tokens_input,
                 tokens_output=tokens_output,
+                device_id=getattr(http_request.state, "device_id", None),
             )
 
             # Commit all changes to database

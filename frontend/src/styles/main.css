@@ -2,21 +2,37 @@
  * Terminal-inspired, mobile-first styles for LLM Router
  */
 
+@font-face {
+  font-family: 'Ubuntu Mono NF';
+  src: url('https://cdn.jsdelivr.net/gh/ryanoasis/nerd-fonts@3.1.1/patched-fonts/UbuntuMono/Regular/UbuntuMonoNerdFontMono-Regular.ttf')
+    format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Ubuntu Mono NF';
+  src: url('https://cdn.jsdelivr.net/gh/ryanoasis/nerd-fonts@3.1.1/patched-fonts/UbuntuMono/Bold/UbuntuMonoNerdFontMono-Bold.ttf')
+    format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
-  --bg-primary: #050a07;
-  --bg-secondary: #09130e;
-  --bg-tertiary: #0f1b14;
-  --bg-panel: #07110c;
-  --border-color: #1d3a2b;
-  --text-primary: #c8ffdc;
-  --text-secondary: #74b08c;
-  --accent: #33ff99;
-  --accent-strong: #00e67a;
-  --danger: #ff6b6b;
-  --success: #48ffb0;
-  --user-msg: #0c2c1f;
-  --assistant-msg: #0a1510;
-  --shadow-color: rgba(2, 8, 5, 0.8);
+  --bg-primary: #1a1b26;
+  --bg-secondary: #1f2335;
+  --bg-tertiary: #24283b;
+  --bg-panel: #16161e;
+  --border-color: #2f3549;
+  --text-primary: #c0caf5;
+  --text-secondary: #7aa2f7;
+  --accent: #9ece6a;
+  --accent-strong: #73daca;
+  --danger: #f7768e;
+  --success: #73daca;
+  --user-msg: #283457;
+  --assistant-msg: #1f2335;
+  --shadow-color: rgba(15, 18, 30, 0.8);
 }
 
 * {
@@ -26,10 +42,10 @@
 }
 
 body {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  background: radial-gradient(900px 600px at 20% -10%, rgba(51, 255, 153, 0.18), transparent 60%),
-    radial-gradient(700px 500px at 90% 10%, rgba(0, 230, 122, 0.12), transparent 60%),
-    linear-gradient(180deg, #040905 0%, #050a07 100%);
+  font-family: 'Ubuntu Mono NF', 'Ubuntu Mono', 'SFMono-Regular', Menlo, monospace;
+  background: radial-gradient(900px 600px at 20% -10%, rgba(122, 162, 247, 0.18), transparent 60%),
+    radial-gradient(700px 500px at 90% 10%, rgba(115, 218, 202, 0.14), transparent 60%),
+    linear-gradient(180deg, #16161e 0%, #1a1b26 100%);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -45,12 +61,12 @@ body::before {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     repeating-linear-gradient(
       180deg,
-      rgba(2, 12, 6, 0) 0px,
-      rgba(2, 12, 6, 0.15) 2px,
-      rgba(2, 12, 6, 0) 4px
+      rgba(12, 14, 30, 0) 0px,
+      rgba(12, 14, 30, 0.2) 2px,
+      rgba(12, 14, 30, 0) 4px
     );
   background-size: 28px 28px;
-  opacity: 0.3;
+  opacity: 0.22;
   pointer-events: none;
   z-index: 0;
   animation: scan 8s linear infinite;
@@ -60,9 +76,9 @@ body::after {
   content: '';
   position: fixed;
   inset: -10%;
-  background: radial-gradient(circle at 50% 0%, rgba(51, 255, 153, 0.12), transparent 55%);
+  background: radial-gradient(circle at 50% 0%, rgba(122, 162, 247, 0.2), transparent 55%);
   mix-blend-mode: screen;
-  opacity: 0.4;
+  opacity: 0.3;
   pointer-events: none;
   z-index: 0;
 }
@@ -99,7 +115,7 @@ body::after {
 
 /* Header */
 .header {
-  background: linear-gradient(180deg, rgba(9, 19, 14, 0.95), rgba(6, 12, 9, 0.95));
+  background: linear-gradient(180deg, rgba(31, 35, 53, 0.95), rgba(22, 22, 30, 0.95));
   border-bottom: 1px solid var(--border-color);
   padding: 12px 14px;
   display: flex;
@@ -137,15 +153,15 @@ body::after {
   text-transform: uppercase;
   padding: 4px 8px;
   border-radius: 6px;
-  border: 1px dashed rgba(51, 255, 153, 0.45);
+  border: 1px dashed rgba(122, 162, 247, 0.4);
   color: var(--accent);
-  background: rgba(51, 255, 153, 0.08);
+  background: rgba(122, 162, 247, 0.08);
 }
 
 .menu-button {
-  background: rgba(51, 255, 153, 0.12);
-  border: 1px solid rgba(51, 255, 153, 0.4);
-  color: var(--accent);
+  background: rgba(122, 162, 247, 0.14);
+  border: 1px solid rgba(122, 162, 247, 0.45);
+  color: #c0caf5;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -156,7 +172,7 @@ body::after {
 
 .header-new {
   background: transparent;
-  border: 1px solid rgba(51, 255, 153, 0.35);
+  border: 1px solid rgba(122, 162, 247, 0.35);
   color: var(--text-primary);
   font-size: 11px;
   letter-spacing: 0.18em;
@@ -179,7 +195,7 @@ body::after {
   display: none;
   position: absolute;
   inset: 0;
-  background: rgba(3, 8, 5, 0.85);
+  background: rgba(15, 18, 30, 0.85);
   z-index: 10;
   padding: 16px;
 }
@@ -191,8 +207,8 @@ body::after {
 .conversation-panel {
   height: 100%;
   width: 100%;
-  background: linear-gradient(180deg, rgba(7, 17, 12, 0.98), rgba(5, 10, 7, 0.98));
-  border: 1px solid rgba(51, 255, 153, 0.35);
+  background: linear-gradient(180deg, rgba(31, 35, 53, 0.98), rgba(22, 22, 30, 0.98));
+  border: 1px solid rgba(122, 162, 247, 0.35);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
@@ -202,7 +218,7 @@ body::after {
 
 .panel-header {
   padding: 16px;
-  border-bottom: 1px dashed rgba(51, 255, 153, 0.2);
+  border-bottom: 1px dashed rgba(122, 162, 247, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -219,7 +235,7 @@ body::after {
 
 .panel-close {
   background: transparent;
-  border: 1px solid rgba(51, 255, 153, 0.35);
+  border: 1px solid rgba(122, 162, 247, 0.35);
   color: var(--text-primary);
   font-size: 11px;
   letter-spacing: 0.18em;
@@ -232,9 +248,9 @@ body::after {
 .new-chat-button {
   width: 100%;
   padding: 10px 12px;
-  background: rgba(51, 255, 153, 0.16);
+  background: rgba(122, 162, 247, 0.16);
   color: var(--text-primary);
-  border: 1px solid rgba(51, 255, 153, 0.4);
+  border: 1px solid rgba(122, 162, 247, 0.4);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -255,18 +271,18 @@ body::after {
   border-radius: 10px;
   cursor: pointer;
   border: 1px solid transparent;
-  background: rgba(7, 17, 12, 0.7);
+  background: rgba(31, 35, 53, 0.7);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .conversation-item:hover {
-  border-color: rgba(51, 255, 153, 0.45);
+  border-color: rgba(122, 162, 247, 0.45);
   transform: translateY(-1px);
 }
 
 .conversation-item.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(51, 255, 153, 0.2);
+  box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.2);
 }
 
 .conversation-title {
@@ -289,9 +305,9 @@ body::after {
 }
 
 .clone-button {
-  background: rgba(51, 255, 153, 0.12);
+  background: rgba(158, 206, 106, 0.16);
   color: var(--text-primary);
-  border: 1px solid rgba(51, 255, 153, 0.35);
+  border: 1px solid rgba(158, 206, 106, 0.4);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 11px;
@@ -319,8 +335,8 @@ body::after {
 
 .model-selector-container {
   padding: 12px 16px;
-  background: linear-gradient(180deg, rgba(7, 17, 12, 0.95), rgba(5, 10, 7, 0.95));
-  border-bottom: 1px dashed rgba(51, 255, 153, 0.2);
+  background: linear-gradient(180deg, rgba(31, 35, 53, 0.95), rgba(22, 22, 30, 0.95));
+  border-bottom: 1px dashed rgba(122, 162, 247, 0.2);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -338,7 +354,7 @@ body::after {
   padding: 10px 12px;
   background: var(--bg-panel);
   color: var(--text-primary);
-  border: 1px solid rgba(51, 255, 153, 0.35);
+  border: 1px solid rgba(122, 162, 247, 0.35);
   border-radius: 8px;
   font-size: 14px;
 }
@@ -346,6 +362,52 @@ body::after {
 .model-meta {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.model-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.control-chip {
+  border: 1px dashed rgba(122, 162, 247, 0.3);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
+}
+
+.stats-panel {
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px dashed rgba(122, 162, 247, 0.2);
+  background: rgba(22, 22, 30, 0.6);
+  flex-wrap: wrap;
+}
+
+.stats-block {
+  flex: 1;
+  border: 1px solid rgba(122, 162, 247, 0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 160px;
+}
+
+.stats-title {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stats-body {
+  font-size: 12px;
+  color: var(--text-primary);
 }
 
 .messages-container {
@@ -376,6 +438,10 @@ body::after {
   align-items: flex-end;
 }
 
+.message.system {
+  align-items: flex-start;
+}
+
 .message-role {
   font-size: 10px;
   font-weight: 600;
@@ -394,14 +460,20 @@ body::after {
 }
 
 .message.user .message-content {
-  background: linear-gradient(135deg, rgba(12, 60, 41, 0.9), rgba(8, 36, 25, 0.95));
-  border: 1px solid rgba(51, 255, 153, 0.25);
-  color: #eafff4;
+  background: linear-gradient(135deg, rgba(35, 46, 76, 0.9), rgba(29, 32, 49, 0.95));
+  border: 1px solid rgba(122, 162, 247, 0.25);
+  color: #dfe6ff;
 }
 
 .message.assistant .message-content {
   background: var(--assistant-msg);
-  border: 1px dashed rgba(51, 255, 153, 0.2);
+  border: 1px dashed rgba(122, 162, 247, 0.2);
+}
+
+.message.system .message-content {
+  background: rgba(20, 22, 34, 0.9);
+  border: 1px dashed rgba(158, 206, 106, 0.3);
+  color: #c0caf5;
 }
 
 .message-content p {
@@ -438,11 +510,25 @@ body::after {
   margin-top: 8px;
 }
 
+.copy-button {
+  align-self: flex-end;
+  margin-top: 8px;
+  background: rgba(122, 162, 247, 0.14);
+  border: 1px solid rgba(122, 162, 247, 0.35);
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 /* Input area */
 .input-area {
   padding: 16px;
-  background: linear-gradient(180deg, rgba(9, 19, 14, 0.95), rgba(6, 12, 9, 0.95));
-  border-top: 1px solid rgba(51, 255, 153, 0.2);
+  background: linear-gradient(180deg, rgba(31, 35, 53, 0.95), rgba(22, 22, 30, 0.95));
+  border-top: 1px solid rgba(122, 162, 247, 0.2);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -455,7 +541,7 @@ body::after {
   padding: 8px 10px;
   border-radius: 10px;
   background: var(--bg-panel);
-  border: 1px solid rgba(51, 255, 153, 0.3);
+  border: 1px solid rgba(122, 162, 247, 0.3);
 }
 
 .prompt-prefix {
@@ -484,9 +570,9 @@ body::after {
 
 .send-button {
   padding: 10px 16px;
-  background: rgba(51, 255, 153, 0.16);
+  background: rgba(122, 162, 247, 0.16);
   color: var(--text-primary);
-  border: 1px solid rgba(51, 255, 153, 0.45);
+  border: 1px solid rgba(122, 162, 247, 0.45);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -511,6 +597,33 @@ body::after {
   text-align: right;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.command-suggestions {
+  display: none;
+  border: 1px solid rgba(122, 162, 247, 0.35);
+  background: rgba(22, 22, 30, 0.95);
+  border-radius: 8px;
+  padding: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.suggestion-item.active,
+.suggestion-item:hover {
+  background: rgba(122, 162, 247, 0.18);
 }
 
 /* Error display */

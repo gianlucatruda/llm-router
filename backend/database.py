@@ -65,11 +65,15 @@ class UsageLog(Base):
     tokens_input: Mapped[int] = mapped_column(Integer, nullable=False)
     tokens_output: Mapped[int] = mapped_column(Integer, nullable=False)
     cost: Mapped[float] = mapped_column(Float, nullable=False)
+    device_id: Mapped[str | None] = mapped_column(String, nullable=True)
     timestamp: Mapped[int] = mapped_column(
         Integer, nullable=False, default=lambda: int(datetime.now().timestamp())
     )
 
-    __table_args__ = (Index("idx_usage_logs_timestamp", "timestamp"),)
+    __table_args__ = (
+        Index("idx_usage_logs_timestamp", "timestamp"),
+        Index("idx_usage_logs_device_id", "device_id"),
+    )
 
 
 # Create async engine
@@ -89,6 +93,13 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        result = await conn.exec_driver_sql("PRAGMA table_info(usage_logs)")
+        columns = {row[1] for row in result.fetchall()}
+        if "device_id" not in columns:
+            await conn.exec_driver_sql("ALTER TABLE usage_logs ADD COLUMN device_id VARCHAR")
+        await conn.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS idx_usage_logs_device_id ON usage_logs(device_id)"
+        )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
