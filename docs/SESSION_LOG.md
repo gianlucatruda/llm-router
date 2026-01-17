@@ -44,6 +44,26 @@ Purpose: capture decisions, test runs, issues, and fixes so work can resume clea
 - `node scripts/ux-smoke.js`: slash commands OK, streaming OK, code blocks OK, refresh persistence OK.
 - `node scripts/ux-extended.js`: clone OK, refresh persistence OK.
 
+### Issues & Fixes (follow-up)
+- OpenAI responses API required `input_text` content type; fixed in `backend/services/llm_client.py`.
+- Streaming failed due to misplaced `get_completion_metadata`; moved back into `LLMClient`.
+- Vite proxy IPv6 localhost issue fixed earlier.
+
+### Test Runs (follow-up)
+- `node scripts/ux-smoke.js`: streaming OK after responses fix, screenshots updated.
+
+## 2026-02-01 (manual validation pass)
+### Test Runs
+- `node scripts/ux-manual.js`: slash command suggestions OK, model switch OK, reasoning rejection on non-supporting model OK, input stays enabled during streaming, metadata persists after reload.
+
+### Screenshots
+- Latest manual flow in `docs/screenshots/`:
+  - `2026-01-17T18-28-42-034Z-start.png`
+  - `2026-01-17T18-28-42-034Z-after-gpt-5-1.png`
+  - `2026-01-17T18-28-42-034Z-after-gpt-4o.png`
+  - `2026-01-17T18-28-42-034Z-after-long-thread.png`
+  - `2026-01-17T18-28-42-034Z-after-reload.png`
+
 ### Issues & Fixes
 - Issue: sessions close button not always visible for automated click; updated test to close overlay safely.
 - Issue: last conversation not restored on refresh; fixed by storing `currentConversationId` and restoring on load.

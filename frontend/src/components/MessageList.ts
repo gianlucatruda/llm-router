@@ -76,12 +76,10 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
     messageEl.appendChild(contentEl);
     messageEl.appendChild(copyButton);
 
-    // Add metadata if available
-    if (message.cost !== undefined && message.cost !== null) {
+    if (message.role === 'assistant') {
       const metaEl = document.createElement('div');
       metaEl.className = 'message-meta';
-      const tokens = (message.tokens_input || 0) + (message.tokens_output || 0);
-      metaEl.textContent = `${tokens.toLocaleString()} tokens • $${message.cost.toFixed(4)}`;
+      metaEl.textContent = formatMeta(message);
       messageEl.appendChild(metaEl);
     }
 
@@ -100,7 +98,11 @@ export function appendToken(container: HTMLElement, token: string): void {
   }
 }
 
-export function renderStreamingMessage(container: HTMLElement, content: string): void {
+export function renderStreamingMessage(
+  container: HTMLElement,
+  content: string,
+  meta?: string
+): void {
   let lastMessage = container.querySelector('.message.assistant:last-child');
 
   if (!lastMessage) {
@@ -125,5 +127,37 @@ export function renderStreamingMessage(container: HTMLElement, content: string):
     contentEl.innerHTML = marked.parse(content) as string;
   }
 
+  if (meta) {
+    let metaEl = lastMessage.querySelector('.message-meta');
+    if (!metaEl) {
+      metaEl = document.createElement('div');
+      metaEl.className = 'message-meta';
+      lastMessage.appendChild(metaEl);
+    }
+    metaEl.textContent = meta;
+  }
+
   container.scrollTop = container.scrollHeight;
+}
+
+function formatMeta(message: Message): string {
+  const parts: string[] = [];
+  if (message.model) {
+    parts.push(message.model);
+  }
+  if (message.temperature !== undefined && message.temperature !== null) {
+    parts.push(`temp ${message.temperature.toFixed(2)}`);
+  }
+  if (message.reasoning) {
+    parts.push(`reasoning ${message.reasoning}`);
+  }
+  if (message.cost !== undefined && message.cost !== null) {
+    const tokens = (message.tokens_input || 0) + (message.tokens_output || 0);
+    parts.push(`${tokens.toLocaleString()} tokens`);
+    parts.push(`$${message.cost.toFixed(4)}`);
+  }
+  if (parts.length === 0) {
+    return 'No metadata';
+  }
+  return parts.join(' • ');
 }

@@ -87,15 +87,17 @@ export function createMessageInput(
     }
   }
 
+  let locked = false;
+
   function setDisabled(disabled: boolean) {
-    textarea.disabled = disabled;
-    sendButton.disabled = disabled;
+    locked = disabled;
+    textarea.disabled = false;
     updateSendState();
   }
 
   function updateSendState() {
     const hasValue = textarea.value.trim().length > 0;
-    sendButton.disabled = textarea.disabled || !hasValue;
+    sendButton.disabled = locked || !hasValue;
   }
 
   let selectedIndex = -1;
@@ -167,6 +169,9 @@ export function createMessageInput(
   container.appendChild(hint);
 
   updateSendState();
+  setTimeout(() => {
+    textarea.focus();
+  }, 0);
 
   return container;
 }

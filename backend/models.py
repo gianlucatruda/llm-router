@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     model: str = "gpt-5.1"
     temperature: float | None = None
     reasoning: str | None = None
+    system_text: str | None = None
 
 
 class MessageResponse(BaseModel):
@@ -16,6 +17,9 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     model: str | None = None
+    temperature: float | None = None
+    reasoning: str | None = None
+    status: str | None = None
     tokens_input: int | None = None
     tokens_output: int | None = None
     cost: float | None = None
@@ -31,6 +35,7 @@ class ConversationResponse(BaseModel):
     model: str
     created_at: int
     updated_at: int
+    system_prompt: str | None = None
     messages: list[MessageResponse] | None = None
 
     class Config:
@@ -43,6 +48,7 @@ class ConversationListItem(BaseModel):
     model: str
     created_at: int
     updated_at: int
+    system_prompt: str | None = None
 
     class Config:
         from_attributes = True
@@ -82,3 +88,8 @@ class ModelDefaults(BaseModel):
 class ModelCatalog(BaseModel):
     defaults: ModelDefaults
     models: list[ModelInfo]
+
+
+class ChatSubmitResponse(BaseModel):
+    conversation_id: str
+    assistant_message_id: str

@@ -91,6 +91,7 @@ async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(ge
     cloned = Conversation(
         title=f"{original.title} (clone)",
         model=original.model,
+        system_prompt=original.system_prompt,
     )
     db.add(cloned)
     await db.flush()
@@ -102,6 +103,9 @@ async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(ge
             role=msg.role,
             content=msg.content,
             model=msg.model,
+            temperature=msg.temperature,
+            reasoning=msg.reasoning,
+            status=msg.status,
             tokens_input=msg.tokens_input,
             tokens_output=msg.tokens_output,
             cost=msg.cost,

@@ -7,6 +7,8 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   model?: string;
+  temperature?: number;
+  reasoning?: string;
   tokens_input?: number;
   tokens_output?: number;
   cost?: number;
@@ -19,6 +21,7 @@ export interface Conversation {
   model: string;
   created_at: number;
   updated_at: number;
+  system_prompt?: string | null;
   messages?: Message[];
 }
 
@@ -28,6 +31,7 @@ export interface ConversationListItem {
   model: string;
   created_at: number;
   updated_at: number;
+  system_prompt?: string | null;
 }
 
 export interface ModelInfo {
@@ -73,6 +77,7 @@ export interface AppState {
   selectedModel: string;
   temperature: number;
   reasoning: string;
+  pendingSystem: string;
   usageOverall: UsageSummary | null;
   usageDevice: UsageSummary | null;
   isStreaming: boolean;

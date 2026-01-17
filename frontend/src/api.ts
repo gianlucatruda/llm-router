@@ -33,7 +33,7 @@ export async function streamChat(
   message: string,
   model: string,
   conversationId: string | null,
-  temperature: number,
+  temperature: number | null,
   reasoning: string,
   onToken: (token: string) => void,
   onComplete: (data: { conversation_id: string; cost: number; tokens: number }) => void,
@@ -49,8 +49,8 @@ export async function streamChat(
         message,
         model,
         conversation_id: conversationId,
-        temperature,
-        reasoning,
+        ...(temperature !== null ? { temperature } : {}),
+        ...(reasoning ? { reasoning } : {}),
       }),
     });
 
@@ -96,6 +96,30 @@ export async function streamChat(
   } catch (error) {
     onError(error instanceof Error ? error.message : 'Unknown error');
   }
+}
+
+export async function submitChat(
+  message: string,
+  model: string,
+  conversationId: string | null,
+  temperature: number | null,
+  reasoning: string,
+  systemText: string | null
+): Promise<{ conversation_id: string; assistant_message_id: string }> {
+  return fetchJSON<{ conversation_id: string; assistant_message_id: string }>(
+    `${API_BASE}/chat/submit`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        model,
+        conversation_id: conversationId,
+        ...(temperature !== null ? { temperature } : {}),
+        ...(reasoning ? { reasoning } : {}),
+        ...(systemText ? { system_text: systemText } : {}),
+      }),
+    }
+  );
 }
 
 /**
@@ -152,4 +176,24 @@ export async function getModelCatalog(): Promise<ModelCatalog> {
  */
 export async function getUsageSummary(scope: 'overall' | 'device'): Promise<UsageSummary> {
   return fetchJSON<UsageSummary>(`${API_BASE}/usage/summary?scope=${scope}`);
+}
+
+export async function generateImage(
+  prompt: string,
+  model: string,
+  size: string,
+  conversationId: string | null
+): Promise<{ conversation_id: string; message_id: string; url: string }> {
+  return fetchJSON<{ conversation_id: string; message_id: string; url: string }>(
+    `${API_BASE}/images/generate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt,
+        model,
+        size,
+        conversation_id: conversationId,
+      }),
+    }
+  );
 }

@@ -1,4 +1,5 @@
 docs/screenshots/*
+docs/reference/*
 
 # Python
 __pycache__/

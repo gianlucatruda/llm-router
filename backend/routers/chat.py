@@ -1,6 +1,7 @@
-"""Chat API endpoints with SSE streaming."""
+"""Chat API endpoints with SSE streaming and background processing."""
 
 import json
+import asyncio
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
@@ -9,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_provider
-from database import Conversation, Message, get_db
-from models import ChatRequest
+from database import Conversation, Message, async_session_maker, get_db
+from models import ChatRequest, ChatSubmitResponse
 from services.llm_client import llm_client
 from services.usage_tracker import calculate_cost, log_usage
 
@@ -48,29 +49,27 @@ async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSess
                 db.add(conversation)
                 await db.flush()
 
+            if request.system_text:
+                conversation.system_prompt = append_system_text(
+                    conversation.system_prompt, request.system_text
+                )
+            conversation.model = request.model
+
             # Save user message
             user_message = Message(
                 conversation_id=conversation.id,
                 role="user",
                 content=request.message,
+                temperature=request.temperature,
+                reasoning=request.reasoning,
+                status="complete",
             )
             db.add(user_message)
 
             # Commit conversation and user message before streaming
             await db.commit()
 
-            # Load conversation history
-            result = await db.execute(
-                select(Message)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at)
-            )
-            messages = result.scalars().all()
-
-            # Convert to OpenAI format
-            message_history: list[dict[str, str]] = [
-                {"role": msg.role, "content": msg.content} for msg in messages
-            ]
+            message_history = await build_message_history(db, conversation.id)
 
             # Stream completion
             provider = get_provider(request.model)
@@ -110,6 +109,9 @@ async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSess
                 role="assistant",
                 content=assistant_content,
                 model=request.model,
+                temperature=request.temperature,
+                reasoning=request.reasoning,
+                status="complete",
                 tokens_input=tokens_input,
                 tokens_output=tokens_output,
                 cost=cost,
@@ -155,3 +157,181 @@ async def stream_chat(request: ChatRequest, http_request: Request, db: AsyncSess
             "Connection": "keep-alive",
         },
     )
+
+
+@router.post("/submit", response_model=ChatSubmitResponse)
+async def submit_chat(
+    request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)
+):
+    """Submit a chat request for background processing."""
+    if request.conversation_id:
+        result = await db.execute(
+            select(Conversation).where(Conversation.id == request.conversation_id)
+        )
+        conversation = result.scalar_one_or_none()
+        if not conversation:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    else:
+        title = request.message[:50] + ("..." if len(request.message) > 50 else "")
+        conversation = Conversation(
+            title=title,
+            model=request.model,
+        )
+        db.add(conversation)
+        await db.flush()
+
+    if request.system_text:
+        conversation.system_prompt = append_system_text(
+            conversation.system_prompt, request.system_text
+        )
+    conversation.model = request.model
+
+    user_message = Message(
+        conversation_id=conversation.id,
+        role="user",
+        content=request.message,
+        temperature=request.temperature,
+        reasoning=request.reasoning,
+        status="complete",
+    )
+    db.add(user_message)
+
+    assistant_message = Message(
+        conversation_id=conversation.id,
+        role="assistant",
+        content="",
+        model=request.model,
+        temperature=request.temperature,
+        reasoning=request.reasoning,
+        status="pending",
+    )
+    db.add(assistant_message)
+    await db.commit()
+
+    asyncio.create_task(
+        run_background_completion(
+            conversation_id=conversation.id,
+            assistant_message_id=assistant_message.id,
+            model=request.model,
+            temperature=request.temperature,
+            reasoning=request.reasoning,
+            system_text=None,
+            device_id=getattr(http_request.state, "device_id", None),
+        )
+    )
+
+    return ChatSubmitResponse(
+        conversation_id=conversation.id,
+        assistant_message_id=assistant_message.id,
+    )
+
+
+async def run_background_completion(
+    conversation_id: str,
+    assistant_message_id: str,
+    model: str,
+    temperature: float | None,
+    reasoning: str | None,
+    system_text: str | None,
+    device_id: str | None,
+) -> None:
+    async with async_session_maker() as session:
+        try:
+            result = await session.execute(
+                select(Conversation).where(Conversation.id == conversation_id)
+            )
+            conversation = result.scalar_one()
+            if system_text:
+                conversation.system_prompt = append_system_text(
+                    conversation.system_prompt, system_text
+                )
+
+            message_history = await build_message_history(session, conversation_id)
+            provider = get_provider(model)
+            assistant_content = ""
+            async for token in llm_client.stream_chat(
+                provider=provider,
+                model=model,
+                messages=message_history,
+                temperature=temperature,
+                reasoning=reasoning,
+            ):
+                assistant_content += token
+
+            metadata_messages = message_history
+            if reasoning:
+                metadata_messages = [
+                    {"role": "system", "content": f"Reasoning level: {reasoning}."},
+                    *message_history,
+                ]
+            metadata = await llm_client.get_completion_metadata(
+                provider=provider,
+                model=model,
+                messages=metadata_messages,
+                completion=assistant_content,
+            )
+            tokens_input = metadata["tokens_input"]
+            tokens_output = metadata["tokens_output"]
+            cost = calculate_cost(model, tokens_input, tokens_output)
+
+            result = await session.execute(
+                select(Message).where(Message.id == assistant_message_id)
+            )
+            assistant_message = result.scalar_one()
+            assistant_message.content = assistant_content
+            assistant_message.tokens_input = tokens_input
+            assistant_message.tokens_output = tokens_output
+            assistant_message.cost = cost
+            assistant_message.status = "complete"
+
+            conversation.updated_at = int(datetime.now().timestamp())
+
+            await log_usage(
+                db=session,
+                conversation_id=conversation_id,
+                model=model,
+                tokens_input=tokens_input,
+                tokens_output=tokens_output,
+                device_id=device_id,
+            )
+            await session.commit()
+        except Exception as exc:
+            result = await session.execute(
+                select(Message).where(Message.id == assistant_message_id)
+            )
+            assistant_message = result.scalar_one_or_none()
+            if assistant_message:
+                assistant_message.status = "error"
+                assistant_message.content = f"Error: {exc}"
+                await session.commit()
+
+
+async def build_message_history(
+    db: AsyncSession, conversation_id: str
+) -> list[dict[str, str]]:
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at)
+    )
+    messages = result.scalars().all()
+    message_history: list[dict[str, str]] = []
+    conversation_result = await db.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conversation = conversation_result.scalar_one_or_none()
+    system_prompt = conversation.system_prompt if conversation else None
+    if system_prompt:
+        message_history.append({"role": "system", "content": system_prompt})
+    message_history.extend(
+        {"role": msg.role, "content": msg.content} for msg in messages if msg.role != "system"
+    )
+    return message_history
+
+
+def append_system_text(current: str | None, addition: str) -> str:
+    if not current:
+        return addition.strip()
+    return f"{current.strip()}\n{addition.strip()}"

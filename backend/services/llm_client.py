@@ -54,18 +54,22 @@ class LLMClient:
     ) -> AsyncGenerator[str, None]:
         """Stream completions from OpenAI API."""
         try:
-            params: dict[str, Any] = {
-                "model": model,
-                "messages": messages,
-                "stream": True,
-            }
-            if temperature is not None:
-                params["temperature"] = temperature
-            stream = await self.openai_client.chat.completions.create(**params)
+            if _use_responses_api(model):
+                async for token in self._stream_openai_responses(model, messages, temperature):
+                    yield token
+            else:
+                params: dict[str, Any] = {
+                    "model": model,
+                    "messages": messages,
+                    "stream": True,
+                }
+                if temperature is not None:
+                    params["temperature"] = temperature
+                stream = await self.openai_client.chat.completions.create(**params)
 
-            async for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                async for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
 
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}") from e
@@ -109,6 +113,22 @@ class LLMClient:
             *messages,
         ]
 
+    async def _stream_openai_responses(
+        self, model: str, messages: list[dict[str, str]], temperature: float | None
+    ) -> AsyncGenerator[str, None]:
+        prompt = "\n".join(f"{msg['role']}: {msg['content']}" for msg in messages)
+        params: dict[str, Any] = {
+            "model": model,
+            "input": prompt,
+            "stream": True,
+        }
+        if temperature is not None:
+            params["temperature"] = temperature
+        stream = await self.openai_client.responses.create(**params)
+        async for event in stream:
+            if getattr(event, "type", "") == "response.output_text.delta":
+                yield event.delta
+
     async def get_completion_metadata(
         self, provider: str, model: str, messages: list[dict[str, str]], completion: str
     ) -> dict[str, Any]:
@@ -144,6 +164,18 @@ class LLMClient:
             }
 
         raise ValueError(f"Unsupported provider: {provider}")
+
+    async def generate_image(self, prompt: str, model: str, size: str) -> str:
+        result = await self.openai_client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+        )
+        return result.data[0].url
+
+
+def _use_responses_api(model: str) -> bool:
+    return model.startswith(("gpt-5", "o1", "o3"))
 
 
 # Singleton instance

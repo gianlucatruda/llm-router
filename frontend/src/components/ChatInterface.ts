@@ -321,6 +321,10 @@ async function handleCloneConversation(id: string): Promise<void> {
 
 async function handleSendMessage(message: string): Promise<void> {
   const state = store.getState();
+  const model = getActiveModel();
+  const effectiveTemp = model && !model.supports_temperature ? null : state.temperature;
+  const effectiveReasoning =
+    model && model.reasoning_levels.length > 0 ? state.reasoning : '';
 
   // Add user message to UI
   const userMessage: Message = {
@@ -336,6 +340,9 @@ async function handleSendMessage(message: string): Promise<void> {
     id: `temp-${Date.now()}-assistant`,
     role: 'assistant',
     content: '',
+    model: state.selectedModel,
+    temperature: effectiveTemp,
+    reasoning: effectiveReasoning || undefined,
     created_at: Date.now() / 1000,
   };
   store.addMessage(assistantMessage);
@@ -351,11 +358,11 @@ async function handleSendMessage(message: string): Promise<void> {
       message,
       state.selectedModel,
       state.currentConversation?.id || null,
-      state.temperature,
-      state.reasoning,
+      effectiveTemp,
+      effectiveReasoning,
       (token) => {
         streamedContent += token;
-        renderStreamingMessage(messageList, streamedContent);
+        renderStreamingMessage(messageList, streamedContent, formatMeta(assistantMessage));
       },
       async (data) => {
         store.setStreaming(false);
@@ -442,6 +449,20 @@ function addSystemMessage(content: string): void {
   store.addMessage(systemMessage);
 }
 
+function formatMeta(message: Message): string {
+  const parts: string[] = [];
+  if (message.model) {
+    parts.push(message.model);
+  }
+  if (message.temperature !== undefined && message.temperature !== null) {
+    parts.push(`temp ${message.temperature.toFixed(2)}`);
+  }
+  if (message.reasoning) {
+    parts.push(`reasoning ${message.reasoning}`);
+  }
+  return parts.join(' • ');
+}
+
 function findModel(query: string): ModelInfo | null {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return null;
@@ -459,7 +480,19 @@ function getReasoningLevels(): string[] {
 }
 
 function getSuggestions(input: string) {
-  return getCommandSuggestions(input, models, getReasoningLevels());
+  const current = getActiveModel();
+  if (input.startsWith('/temp') && current && !current.supports_temperature) {
+    return [];
+  }
+  if (input.startsWith('/reasoning') && current && current.reasoning_levels.length === 0) {
+    return [];
+  }
+  const levels = getReasoningLevels();
+  return getCommandSuggestions(input, models, levels);
+}
+
+function getActiveModel(): ModelInfo | null {
+  return models.find((model) => model.id === store.getState().selectedModel) || null;
 }
 
 function createStatsPanel(): HTMLElement {

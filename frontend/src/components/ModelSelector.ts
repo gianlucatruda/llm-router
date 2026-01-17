@@ -73,13 +73,18 @@ export function createModelSelector(
   const controls = document.createElement('div');
   controls.className = 'model-controls';
 
+  const current = models.find((model) => model.id === selectedModel);
   const tempChip = document.createElement('div');
   tempChip.className = 'control-chip';
-  tempChip.textContent = `Temp ${temperature.toFixed(2)}`;
+  tempChip.textContent = current?.supports_temperature ? `Temp ${temperature.toFixed(2)}` : 'Temp n/a';
 
   const reasoningChip = document.createElement('div');
   reasoningChip.className = 'control-chip';
-  reasoningChip.textContent = `Reasoning ${reasoning}`;
+  if (current && current.reasoning_levels.length > 0) {
+    reasoningChip.textContent = `Reasoning ${reasoning}`;
+  } else {
+    reasoningChip.textContent = 'Reasoning n/a';
+  }
 
   controls.appendChild(tempChip);
   controls.appendChild(reasoningChip);

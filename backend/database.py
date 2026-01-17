@@ -21,6 +21,7 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title: Mapped[str] = mapped_column(String, nullable=False)
     model: Mapped[str] = mapped_column(String, nullable=False)
+    system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[int] = mapped_column(
         Integer, nullable=False, default=lambda: int(datetime.now().timestamp())
     )
@@ -43,6 +44,9 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String, nullable=False)  # "user" or "assistant"
     content: Mapped[str] = mapped_column(Text, nullable=False)
     model: Mapped[str] = mapped_column(String, nullable=True)
+    temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reasoning: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str | None] = mapped_column(String, nullable=True)
     tokens_input: Mapped[int] = mapped_column(Integer, nullable=True)
     tokens_output: Mapped[int] = mapped_column(Integer, nullable=True)
     cost: Mapped[float] = mapped_column(Float, nullable=True)
@@ -100,6 +104,18 @@ async def init_db():
         await conn.exec_driver_sql(
             "CREATE INDEX IF NOT EXISTS idx_usage_logs_device_id ON usage_logs(device_id)"
         )
+        result = await conn.exec_driver_sql("PRAGMA table_info(messages)")
+        message_columns = {row[1] for row in result.fetchall()}
+        if "temperature" not in message_columns:
+            await conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN temperature FLOAT")
+        if "reasoning" not in message_columns:
+            await conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN reasoning VARCHAR")
+        if "status" not in message_columns:
+            await conn.exec_driver_sql("ALTER TABLE messages ADD COLUMN status VARCHAR")
+        result = await conn.exec_driver_sql("PRAGMA table_info(conversations)")
+        conversation_columns = {row[1] for row in result.fetchall()}
+        if "system_prompt" not in conversation_columns:
+            await conn.exec_driver_sql("ALTER TABLE conversations ADD COLUMN system_prompt TEXT")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

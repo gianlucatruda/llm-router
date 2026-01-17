@@ -43,9 +43,7 @@
 
 body {
   font-family: 'Ubuntu Mono NF', 'Ubuntu Mono', 'SFMono-Regular', Menlo, monospace;
-  background: radial-gradient(900px 600px at 20% -10%, rgba(122, 162, 247, 0.18), transparent 60%),
-    radial-gradient(700px 500px at 90% 10%, rgba(115, 218, 202, 0.14), transparent 60%),
-    linear-gradient(180deg, #16161e 0%, #1a1b26 100%);
+  background: linear-gradient(180deg, #16161e 0%, #1a1b26 100%);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -66,19 +64,19 @@ body::before {
       rgba(12, 14, 30, 0) 4px
     );
   background-size: 28px 28px;
-  opacity: 0.22;
+  opacity: 0.12;
   pointer-events: none;
   z-index: 0;
-  animation: scan 8s linear infinite;
+  animation: scan 14s linear infinite;
 }
 
 body::after {
   content: '';
   position: fixed;
   inset: -10%;
-  background: radial-gradient(circle at 50% 0%, rgba(122, 162, 247, 0.2), transparent 55%);
+  background: radial-gradient(circle at 50% 0%, rgba(122, 162, 247, 0.14), transparent 55%);
   mix-blend-mode: screen;
-  opacity: 0.3;
+  opacity: 0.2;
   pointer-events: none;
   z-index: 0;
 }
@@ -117,12 +115,12 @@ body::after {
 .header {
   background: linear-gradient(180deg, rgba(31, 35, 53, 0.95), rgba(22, 22, 30, 0.95));
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 14px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  box-shadow: 0 12px 30px var(--shadow-color);
+  box-shadow: none;
 }
 
 .title-wrap {
@@ -141,17 +139,17 @@ body::after {
 }
 
 .title-sub {
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 
 .status-pill {
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 6px;
   border: 1px dashed rgba(122, 162, 247, 0.4);
   color: var(--accent);
@@ -162,11 +160,11 @@ body::after {
   background: rgba(122, 162, 247, 0.14);
   border: 1px solid rgba(122, 162, 247, 0.45);
   color: #c0caf5;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
 }
 
@@ -174,10 +172,10 @@ body::after {
   background: transparent;
   border: 1px solid rgba(122, 162, 247, 0.35);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -212,7 +210,7 @@ body::after {
   border-radius: 14px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 50px rgba(2, 8, 5, 0.7);
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -334,7 +332,7 @@ body::after {
 }
 
 .model-selector-container {
-  padding: 12px 16px;
+  padding: 8px 12px;
   background: linear-gradient(180deg, rgba(31, 35, 53, 0.95), rgba(22, 22, 30, 0.95));
   border-bottom: 1px dashed rgba(122, 162, 247, 0.2);
   display: flex;
@@ -343,7 +341,7 @@ body::after {
 }
 
 .model-selector-label {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: var(--text-secondary);
@@ -351,16 +349,16 @@ body::after {
 
 .model-selector {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--bg-panel);
   color: var(--text-primary);
   border: 1px solid rgba(122, 162, 247, 0.35);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .model-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -372,9 +370,9 @@ body::after {
 
 .control-chip {
   border: 1px dashed rgba(122, 162, 247, 0.3);
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-primary);
@@ -383,7 +381,7 @@ body::after {
 .stats-panel {
   display: flex;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 6px 12px;
   border-bottom: 1px dashed rgba(122, 162, 247, 0.2);
   background: rgba(22, 22, 30, 0.6);
   flex-wrap: wrap;
@@ -393,20 +391,20 @@ body::after {
   flex: 1;
   border: 1px solid rgba(122, 162, 247, 0.2);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   min-width: 160px;
 }
 
 .stats-title {
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .stats-body {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-primary);
 }
 
@@ -453,10 +451,10 @@ body::after {
 
 .message-content {
   padding: 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   line-height: 1.7;
   max-width: min(620px, 100%);
-  box-shadow: 0 12px 24px rgba(2, 8, 5, 0.6);
+  box-shadow: none;
 }
 
 .message.user .message-content {

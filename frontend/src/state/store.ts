@@ -90,6 +90,18 @@ class Store {
     this.notify();
   }
 
+  appendSystemText(text: string): void {
+    const current = this.state.pendingSystem;
+    const next = current ? `${current}\n${text}` : text;
+    this.state.pendingSystem = next;
+    this.notify();
+  }
+
+  clearSystemText(): void {
+    this.state.pendingSystem = '';
+    this.notify();
+  }
+
   setStreaming(isStreaming: boolean): void {
     this.state.isStreaming = isStreaming;
     this.notify();
@@ -123,6 +135,7 @@ export const store = new Store({
   selectedModel: savedModel,
   temperature: Number.isFinite(savedTemp) ? savedTemp : 0.2,
   reasoning: savedReasoning,
+  pendingSystem: '',
   usageOverall: null,
   usageDevice: null,
   isStreaming: false,

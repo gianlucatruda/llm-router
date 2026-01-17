@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import init_db
-from routers import chat, conversations, usage
+from routers import chat, conversations, usage, images
 
 
 @asynccontextmanager
@@ -39,6 +39,7 @@ app.add_middleware(
 app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(usage.router)
+app.include_router(images.router)
 
 @app.middleware("http")
 async def device_id_middleware(request: Request, call_next):

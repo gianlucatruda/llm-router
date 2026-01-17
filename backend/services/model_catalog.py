@@ -72,7 +72,13 @@ def _merge_models(
 
 def _infer_capabilities(provider: str, model_id: str) -> dict[str, Any]:
     if provider == "openai":
-        if model_id.startswith(("o1", "o3", "gpt-5")):
+        if model_id.startswith(("o1", "o3")):
+            return {
+                "supports_reasoning": True,
+                "reasoning_levels": ["low", "medium", "high"],
+                "supports_temperature": False,
+            }
+        if model_id.startswith("gpt-5"):
             return {
                 "supports_reasoning": True,
                 "reasoning_levels": ["low", "medium", "high"],
