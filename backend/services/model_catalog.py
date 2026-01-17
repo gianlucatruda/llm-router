@@ -38,25 +38,29 @@ def _merge_models(
                 continue
             fallback_meta = fallback.get(model_id, {})
             inferred = _infer_capabilities(provider, model_id)
+            name = _coerce_str(fallback_meta.get("name"), model_id)
+            supports_reasoning = _coerce_bool(
+                fallback_meta.get("supports_reasoning"), inferred["supports_reasoning"]
+            )
+            reasoning_levels = _coerce_str_list(
+                fallback_meta.get("reasoning_levels"), inferred["reasoning_levels"]
+            )
+            supports_temperature = _coerce_bool(
+                fallback_meta.get("supports_temperature"), inferred["supports_temperature"]
+            )
             models.append(
                 ModelInfo(
                     id=model_id,
-                    name=fallback_meta.get("name", model_id),
+                    name=name,
                     provider=provider,
                     input_cost=fallback_meta.get("input_cost", 0),
                     output_cost=fallback_meta.get("output_cost", 0),
                     source="live",
                     pricing_source="fallback" if model_id in fallback else "unknown",
                     available=True,
-                    supports_reasoning=fallback_meta.get(
-                        "supports_reasoning", inferred["supports_reasoning"]
-                    ),
-                    reasoning_levels=fallback_meta.get(
-                        "reasoning_levels", inferred["reasoning_levels"]
-                    ),
-                    supports_temperature=fallback_meta.get(
-                        "supports_temperature", inferred["supports_temperature"]
-                    ),
+                    supports_reasoning=supports_reasoning,
+                    reasoning_levels=reasoning_levels,
+                    supports_temperature=supports_temperature,
                 )
             )
     for model_id, meta in fallback.items():
@@ -105,6 +109,24 @@ def _allow_live_only(provider: str, model_id: str) -> bool:
     if provider != "openai":
         return False
     return model_id.startswith(("gpt-4o", "gpt-4.1", "gpt-4", "gpt-3.5"))
+
+
+def _coerce_str(value: Any, fallback: str) -> str:
+    if isinstance(value, str) and value:
+        return value
+    return fallback
+
+
+def _coerce_bool(value: Any, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    return fallback
+
+
+def _coerce_str_list(value: Any, fallback: list[str]) -> list[str]:
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return value
+    return fallback
 
 
 async def _fetch_openai_models() -> list[str] | None:

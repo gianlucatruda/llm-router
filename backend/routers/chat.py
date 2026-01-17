@@ -329,14 +329,14 @@ async def build_message_history(db: AsyncSession, conversation_id: str) -> list[
     message_history.extend(
         {"role": msg.role, "content": msg.content}
         for msg in messages
-        if msg.role != "system"
-        and msg.content
-        and msg.status not in {"pending", "error"}
+        if msg.role != "system" and msg.content and msg.status not in {"pending", "error"}
     )
     return message_history
 
 
-def append_system_text(current: str | None, addition: str) -> str:
+def append_system_text(current: str | None, addition: str | None) -> str:
+    if not addition:
+        return (current or "").strip()
     if not current:
         return addition.strip()
     return f"{current.strip()}\n{addition.strip()}"
