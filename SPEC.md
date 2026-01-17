@@ -4,6 +4,29 @@
 
 A retro terminal-inspired, mobile-first web application that routes queries through personal API keys (OpenAI, Anthropic, etc.). Designed for self-hosting on Raspberry Pi 5 with Docker Compose, with easy portability to VPS.
 
+## v1 Requirements (Working Spec)
+
+### Visual + UX
+- Modern, clean terminal aesthetic inspired by Tokyo Night + Ubuntu Mono Nerd Font + Claude-cost TUI.
+- Preserve rich text formatting (bold/italic/code), but style like a TUI.
+- Mobile-first; touch-friendly controls; copy buttons on each message.
+
+### Models + Controls
+- Models fetched dynamically when possible; fallback to hardcoded list, clearly marked in UI.
+- Include OpenAI + Anthropic catalogs with reasoning models (o1/o3), GPT-5.x, Claude Sonnet 4.5.
+- Default: GPT-5.1 with low reasoning.
+- Slash commands with autocomplete:
+  - `/model <name>`
+  - `/temp <number>`
+  - `/reasoning <level>`
+  - `/help`
+- Command definitions centralized in one location for easy updates.
+
+### Statistics
+- Show per-session stats (tokens + cost est.).
+- Show overall stats (tokens + cost est.).
+- Persistence is device-scoped (survives refresh, even if localStorage cleared).
+
 ## Core Requirements
 
 ### Must Have

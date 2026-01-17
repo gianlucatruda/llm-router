@@ -46,6 +46,14 @@ This project follows specific design principles and tooling preferences:
 - **Production**: Single Docker container (frontend built into backend)
 - **No separate frontend server** - FastAPI serves static files in prod
 
+### UX/Test Automation (Codex Sessions)
+- **Backend dev server**: run `uv sync` in `backend`, then `uv run uvicorn main:app --reload`
+- **Frontend dev server**: run `npm install` in `frontend`, then `npm run dev`
+- **Playwright UX smoke**: `node scripts/ux-smoke.js` (takes screenshots in `docs/screenshots/`)
+- **Extended UX smoke**: `node scripts/ux-extended.js` (cloning + refresh persistence checks)
+- **API smoke**: `node scripts/api-smoke.js`
+- Use real API keys from `.env` for live testing (no mocks for v1)
+
 ### What to Avoid
 - Heavy frameworks when vanilla JS suffices
 - Microservices (this is a single-user app)

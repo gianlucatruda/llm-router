@@ -204,6 +204,9 @@ docker run -p 8000:8000 --env-file .env llm-router
 - [ ] System prompts
 - [ ] Image/vision support
 - [ ] HTTPS via Caddy
+- [ ] TUI-inspired Tokyo Night aesthetic
+- [ ] Slash commands (/model, /temp, /reasoning, /help)
+- [ ] Per-session + overall stats with device persistence
 
 ### v2 (Future)
 - [ ] Usage analytics dashboard
