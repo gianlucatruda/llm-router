@@ -33,7 +33,7 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
   if (messages.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
-    empty.textContent = 'Start a conversation by typing a message below';
+    empty.textContent = 'Type your first command to start the session';
     container.appendChild(empty);
     return;
   }

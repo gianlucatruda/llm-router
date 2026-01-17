@@ -25,6 +25,7 @@ This project follows specific design principles and tooling preferences:
 - **SQLite** - No separate database server to manage
 - **Minimal dependencies** - Each dependency is a liability
 - **Modular and configurable** - Easy to adapt and extend
+- **Retro terminal-inspired, aesthetic UI** - Feels like a classic terminal, not a generic chat app
 - **Mobile-first** - Phone usage is primary, desktop secondary
 
 ### Code Style

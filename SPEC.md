@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-A mobile-first web application that provides a ChatGPT-like interface while routing queries through personal API keys (OpenAI, Anthropic, etc.). Designed for self-hosting on Raspberry Pi 5 with Docker Compose, with easy portability to VPS.
+A retro terminal-inspired, mobile-first web application that routes queries through personal API keys (OpenAI, Anthropic, etc.). Designed for self-hosting on Raspberry Pi 5 with Docker Compose, with easy portability to VPS.
 
 ## Core Requirements
 
 ### Must Have
-- **Mobile-first responsive UI** mimicking ChatGPT's UX
+- **Retro terminal-inspired, aesthetic UI** built mobile-first
 - **Multi-provider support**: OpenAI and Anthropic APIs
 - **Model selection**: Switch between models (GPT-4, GPT-3.5, Claude Opus, Claude Sonnet, etc.)
 - **Conversation management**: Create, save, delete, search conversations

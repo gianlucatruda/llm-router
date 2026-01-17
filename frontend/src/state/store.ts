@@ -46,6 +46,11 @@ class Store {
   setCurrentConversation(conversation: Conversation | null): void {
     this.state.currentConversation = conversation;
     this.state.messages = conversation?.messages || [];
+    if (conversation) {
+      localStorage.setItem('currentConversationId', conversation.id);
+    } else {
+      localStorage.removeItem('currentConversationId');
+    }
     this.notify();
   }
 
@@ -98,5 +103,5 @@ export const store = new Store({
   selectedModel: savedModel,
   isStreaming: false,
   error: null,
-  sidebarOpen: window.innerWidth >= 768, // Open on desktop by default
+  sidebarOpen: false,
 });

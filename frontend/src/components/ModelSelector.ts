@@ -12,6 +12,10 @@ export function createModelSelector(
   const container = document.createElement('div');
   container.className = 'model-selector-container';
 
+  const label = document.createElement('div');
+  label.className = 'model-selector-label';
+  label.textContent = 'Model';
+
   const select = document.createElement('select');
   select.className = 'model-selector';
 
@@ -32,7 +36,7 @@ export function createModelSelector(
     providerModels.forEach(model => {
       const option = document.createElement('option');
       option.value = model.id;
-      option.textContent = `${model.name} ($${model.input_cost}/$${model.output_cost} per 1K tokens)`;
+      option.textContent = model.name;
       option.selected = model.id === selectedModel;
       optgroup.appendChild(option);
     });
@@ -40,11 +44,29 @@ export function createModelSelector(
     select.appendChild(optgroup);
   });
 
+  const meta = document.createElement('div');
+  meta.className = 'model-meta';
+
+  const updateMeta = () => {
+    const current = models.find(model => model.id === select.value);
+    if (!current) {
+      meta.textContent = '';
+      return;
+    }
+    const provider = current.provider.charAt(0).toUpperCase() + current.provider.slice(1);
+    meta.textContent = `${provider} • $${current.input_cost}/$${current.output_cost} per 1K tokens`;
+  };
+
   select.addEventListener('change', () => {
     onChange(select.value);
+    updateMeta();
   });
 
+  updateMeta();
+
+  container.appendChild(label);
   container.appendChild(select);
+  container.appendChild(meta);
 
   return container;
 }

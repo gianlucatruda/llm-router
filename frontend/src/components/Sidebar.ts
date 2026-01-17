@@ -8,20 +8,34 @@ export function createSidebar(
   conversations: ConversationListItem[],
   currentConversationId: string | null,
   onNewChat: () => void,
+  onClose: () => void,
   onSelectConversation: (id: string) => void,
+  onCloneConversation: (id: string) => void,
   onDeleteConversation: (id: string) => void
 ): HTMLElement {
   const sidebar = document.createElement('div');
-  sidebar.className = 'sidebar';
-  sidebar.id = 'sidebar';
+  sidebar.className = 'conversation-panel';
+  sidebar.id = 'conversation-panel';
 
-  // Header with new chat button
+  // Panel header
   const header = document.createElement('div');
-  header.className = 'sidebar-header';
+  header.className = 'panel-header';
+
+  const title = document.createElement('div');
+  title.className = 'panel-title';
+  title.textContent = 'Sessions';
+
+  const closeButton = document.createElement('button');
+  closeButton.className = 'panel-close';
+  closeButton.textContent = 'CLOSE';
+  closeButton.addEventListener('click', onClose);
+
+  header.appendChild(title);
+  header.appendChild(closeButton);
 
   const newChatButton = document.createElement('button');
   newChatButton.className = 'new-chat-button';
-  newChatButton.textContent = '+ New Chat';
+  newChatButton.textContent = '+ NEW CHAT';
   newChatButton.addEventListener('click', onNewChat);
 
   header.appendChild(newChatButton);
@@ -34,7 +48,7 @@ export function createSidebar(
   if (conversations.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'text-align: center; color: var(--text-secondary); padding: 20px; font-size: 14px;';
-    empty.textContent = 'No conversations yet';
+    empty.textContent = 'No sessions yet';
     listContainer.appendChild(empty);
   } else {
     conversations.forEach(conv => {
@@ -53,6 +67,17 @@ export function createSidebar(
       const date = new Date(conv.updated_at * 1000);
       meta.textContent = `${conv.model} • ${formatDate(date)}`;
 
+      const actions = document.createElement('div');
+      actions.className = 'conversation-actions';
+
+      const cloneButton = document.createElement('button');
+      cloneButton.className = 'clone-button';
+      cloneButton.textContent = 'Clone';
+      cloneButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onCloneConversation(conv.id);
+      });
+
       const deleteButton = document.createElement('button');
       deleteButton.className = 'delete-button';
       deleteButton.textContent = 'Delete';
@@ -63,9 +88,12 @@ export function createSidebar(
         }
       });
 
+      actions.appendChild(cloneButton);
+      actions.appendChild(deleteButton);
+
       item.appendChild(title);
       item.appendChild(meta);
-      item.appendChild(deleteButton);
+      item.appendChild(actions);
 
       item.addEventListener('click', () => {
         onSelectConversation(conv.id);

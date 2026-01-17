@@ -1,10 +1,10 @@
 # LLM Router
 
-A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage.
+A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired UI.
 
 ## Features
 
-- **Mobile-first responsive UI** inspired by ChatGPT
+- **Retro terminal-inspired, aesthetic UI** built mobile-first
 - **Multiple LLM providers** - OpenAI (v0), Anthropic coming in v1
 - **Real-time streaming** - Token-by-token responses via Server-Sent Events
 - **Conversation management** - Create, view, delete, and clone conversations
@@ -193,7 +193,7 @@ docker run -p 8000:8000 --env-file .env llm-router
 - ✅ Streaming responses
 - ✅ Conversation management
 - ✅ Usage tracking
-- ✅ Mobile-first UI
+- ✅ Retro terminal-inspired, mobile-first UI
 - ✅ Single-container deployment
 
 ### v1 (Next)
@@ -223,7 +223,8 @@ python --version  # Should be 3.11+
 
 **Check dependencies**:
 ```bash
-pip install -r backend/requirements.txt
+cd backend
+uv sync
 ```
 
 **Check .env file**:

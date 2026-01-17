@@ -40,23 +40,28 @@ export async function createChatInterface(): Promise<HTMLElement> {
   const mainContainer = document.createElement('div');
   mainContainer.className = 'main-container';
 
-  // Create sidebar overlay for mobile
+  // Create conversation panel overlay
   const overlay = document.createElement('div');
-  overlay.className = 'sidebar-overlay';
+  overlay.className = 'panel-overlay';
   overlay.addEventListener('click', () => {
     store.setSidebarOpen(false);
   });
-  mainContainer.appendChild(overlay);
 
-  // Create and append sidebar
-  const sidebar = createSidebar(
+  const panel = createSidebar(
     store.getState().conversations,
     store.getState().currentConversation?.id || null,
     handleNewChat,
+    () => store.setSidebarOpen(false),
     handleSelectConversation,
+    handleCloneConversation,
     handleDeleteConversation
   );
-  mainContainer.appendChild(sidebar);
+  panel.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  overlay.appendChild(panel);
+  mainContainer.appendChild(overlay);
 
   // Create chat area
   const chatArea = document.createElement('div');
@@ -95,16 +100,37 @@ function createHeader(): HTMLElement {
 
   const menuButton = document.createElement('button');
   menuButton.className = 'menu-button';
-  menuButton.innerHTML = '☰';
+  menuButton.innerHTML = 'SESSIONS';
   menuButton.addEventListener('click', () => {
     store.toggleSidebar();
   });
 
+  const titleWrap = document.createElement('div');
+  titleWrap.className = 'title-wrap';
+
   const title = document.createElement('h1');
   title.textContent = 'LLM Router';
 
+  const subtitle = document.createElement('span');
+  subtitle.className = 'title-sub';
+  subtitle.textContent = 'terminal mode';
+
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(subtitle);
+
+  const status = document.createElement('div');
+  status.className = 'status-pill';
+  status.textContent = 'LOCAL';
+
+  const newChatButton = document.createElement('button');
+  newChatButton.className = 'header-new';
+  newChatButton.textContent = 'NEW';
+  newChatButton.addEventListener('click', handleNewChat);
+
   header.appendChild(menuButton);
-  header.appendChild(title);
+  header.appendChild(titleWrap);
+  header.appendChild(status);
+  header.appendChild(newChatButton);
 
   return header;
 }
@@ -140,26 +166,27 @@ function render(app: HTMLElement): void {
     errorBanner.style.display = 'none';
   }
 
-  // Update sidebar
-  const sidebar = app.querySelector('#sidebar')!;
-  const sidebarOverlay = app.querySelector('.sidebar-overlay')!;
-  if (state.sidebarOpen) {
-    sidebar.classList.add('open');
-    sidebarOverlay.classList.add('visible');
-  } else {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('visible');
-  }
-
-  // Re-render sidebar content
+  // Update panel
+  const panelOverlay = app.querySelector('.panel-overlay') as HTMLElement;
   const newSidebar = createSidebar(
     state.conversations,
     state.currentConversation?.id || null,
     handleNewChat,
+    () => store.setSidebarOpen(false),
     handleSelectConversation,
+    handleCloneConversation,
     handleDeleteConversation
   );
-  sidebar.innerHTML = newSidebar.innerHTML;
+  newSidebar.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+  if (state.sidebarOpen) {
+    panelOverlay.classList.add('visible');
+  } else {
+    panelOverlay.classList.remove('visible');
+  }
+  panelOverlay.innerHTML = '';
+  panelOverlay.appendChild(newSidebar);
 
   // Update messages
   const messageList = app.querySelector('#messages') as HTMLElement;
@@ -176,6 +203,12 @@ async function loadConversations(): Promise<void> {
   try {
     const conversations = await api.getConversations();
     store.setConversations(conversations);
+    const lastId = localStorage.getItem('currentConversationId');
+    const exists = lastId && conversations.some((conv) => conv.id === lastId);
+    if (exists && (!store.getState().currentConversation || store.getState().currentConversation?.id !== lastId)) {
+      const conversation = await api.getConversation(lastId as string);
+      store.setCurrentConversation(conversation);
+    }
   } catch (error) {
     store.setError('Failed to load conversations');
   }
@@ -183,18 +216,14 @@ async function loadConversations(): Promise<void> {
 
 function handleNewChat(): void {
   store.setCurrentConversation(null);
-  if (window.innerWidth < 768) {
-    store.setSidebarOpen(false);
-  }
+  store.setSidebarOpen(false);
 }
 
 async function handleSelectConversation(id: string): Promise<void> {
   try {
     const conversation = await api.getConversation(id);
     store.setCurrentConversation(conversation);
-    if (window.innerWidth < 768) {
-      store.setSidebarOpen(false);
-    }
+    store.setSidebarOpen(false);
   } catch (error) {
     store.setError('Failed to load conversation');
   }
@@ -209,6 +238,17 @@ async function handleDeleteConversation(id: string): Promise<void> {
     }
   } catch (error) {
     store.setError('Failed to delete conversation');
+  }
+}
+
+async function handleCloneConversation(id: string): Promise<void> {
+  try {
+    const conversation = await api.cloneConversation(id);
+    await loadConversations();
+    store.setCurrentConversation(conversation);
+    store.setSidebarOpen(false);
+  } catch (error) {
+    store.setError('Failed to clone conversation');
   }
 }
 
