@@ -46,6 +46,8 @@ async function run() {
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
   await waitForModelReady(page);
+  const versionLabel = await page.$eval('.title-version', (el) => (el.textContent || '').trim());
+  log(`version label: ${versionLabel || 'missing'}`);
   await page.screenshot({ path: screenshotPath('mobile-home') });
   log('loaded mobile view');
 

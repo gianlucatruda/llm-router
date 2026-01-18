@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from config import APP_VERSION
+from config import APP_VERSION, get_commit_info
 from database import init_db
 from routers import chat, conversations, images, usage
 
@@ -66,8 +66,7 @@ async def health_check():
 @app.get("/api/version")
 async def version_info():
     """Return build/version information."""
-    commit = os.getenv("GIT_SHA", "").strip() or None
-    commit_short = commit[:7] if commit else "dev"
+    commit, commit_short = get_commit_info()
     return {
         "version": APP_VERSION,
         "commit": commit,

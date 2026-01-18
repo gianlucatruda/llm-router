@@ -673,8 +673,18 @@ function parseImageArgs(raw: string): { prompt: string; model: string; size: str
     }
     promptParts.push(token);
   });
-  if (promptParts.length > 1 && promptParts[0].toLowerCase() === 'prompt') {
-    promptParts.shift();
+  if (promptParts.length > 1) {
+    const first = promptParts[0].toLowerCase();
+    if (first === 'prompt') {
+      promptParts.shift();
+    } else if (first.startsWith('prompt:') || first.startsWith('prompt=')) {
+      const stripped = promptParts[0].slice('prompt:'.length);
+      if (stripped) {
+        promptParts[0] = stripped;
+      } else {
+        promptParts.shift();
+      }
+    }
   }
   return { prompt: promptParts.join(' '), model, size };
 }
