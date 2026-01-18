@@ -1,9 +1,0 @@
-# Raspberry Pi specific overrides
-version: '3.8'
-
-services:
-  llm-router:
-    platform: linux/arm64
-    build:
-      context: .
-      dockerfile: Dockerfile

@@ -621,6 +621,23 @@ async function handleImageCommand(raw: string): Promise<void> {
     store.setError('Image prompt cannot be empty.');
     return;
   }
+  const timestamp = Date.now() / 1000;
+  const userMessage: Message = {
+    id: `image-${Date.now()}-user`,
+    role: 'user',
+    content: `/image ${prompt} model=${model} size=${size}`,
+    created_at: timestamp,
+  };
+  const assistantMessage: Message = {
+    id: `image-${Date.now()}-assistant`,
+    role: 'assistant',
+    content: `Generating image\\nPrompt: ${prompt}\\nModel: ${model}\\nSize: ${size}`,
+    model,
+    status: 'pending-image',
+    created_at: timestamp,
+  };
+  store.addMessage(userMessage);
+  store.addMessage(assistantMessage);
   store.setStreaming(true);
   try {
     const result = await api.generateImage(

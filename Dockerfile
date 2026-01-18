@@ -19,8 +19,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-ARG GIT_SHA=""
-ENV GIT_SHA=$GIT_SHA
+ARG GIT_SHA=dev
+ARG GIT_COMMIT
+ARG GIT_REF
+ENV GIT_SHA=${GIT_SHA:-${GIT_COMMIT:-${GIT_REF:-dev}}}
 
 # Install dependencies with uv
 RUN pip install --no-cache-dir uv

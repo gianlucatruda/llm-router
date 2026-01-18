@@ -490,6 +490,46 @@ body::after {
   margin: 8px 0;
 }
 
+.image-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+
+.image-status-details {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.image-status-line {
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(122, 162, 247, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .message-content pre {
   background: #0b0e16;
   padding: 10px;

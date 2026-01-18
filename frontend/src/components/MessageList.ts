@@ -52,7 +52,21 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
 
     // Render markdown for assistant/system messages
     if (message.role === 'assistant' || message.role === 'system') {
-      contentEl.innerHTML = marked.parse(message.content) as string;
+      if (message.status === 'pending-image') {
+        const details = message.content
+          .split('\n')
+          .map((line) => `<div class="image-status-line">${line}</div>`)
+          .join('');
+        contentEl.innerHTML = `
+          <div class="image-status">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Generating image...</span>
+          </div>
+          <div class="image-status-details">${details}</div>
+        `;
+      } else {
+        contentEl.innerHTML = marked.parse(message.content) as string;
+      }
     } else {
       contentEl.textContent = message.content;
     }
