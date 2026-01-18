@@ -88,6 +88,7 @@ async def stream_chat(
                 messages=message_history,
                 temperature=request.temperature,
                 reasoning=request.reasoning,
+                system_prompt=conversation.system_prompt,
             ):
                 assistant_content += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
@@ -269,6 +270,7 @@ async def run_background_completion(
                 messages=message_history,
                 temperature=temperature,
                 reasoning=reasoning,
+                system_prompt=conversation.system_prompt,
             ):
                 assistant_content += token
 

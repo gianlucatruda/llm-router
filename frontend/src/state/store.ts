@@ -157,6 +157,11 @@ class Store {
     this.notify();
   }
 
+  setSystemUpdating(isUpdating: boolean): void {
+    this.state.systemUpdating = isUpdating;
+    this.notify();
+  }
+
   setError(error: string | null): void {
     this.state.error = error;
     this.notify();
@@ -192,6 +197,7 @@ export const store = new Store({
   usageOverall: null,
   usageDevice: null,
   isStreaming: false,
+  systemUpdating: false,
   error: null,
   sidebarOpen: false,
 });

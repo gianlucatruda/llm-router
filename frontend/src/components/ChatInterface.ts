@@ -253,7 +253,7 @@ function render(app: HTMLElement): void {
   // Update input state
   const inputArea = app.querySelector('.input-area') as any;
   if (inputArea && inputArea.setDisabled) {
-    inputArea.setDisabled(state.isStreaming);
+    inputArea.setDisabled(state.isStreaming || state.systemUpdating);
   }
 }
 
@@ -538,18 +538,30 @@ function handleCommand(input: string): boolean {
     const conversationId = store.getState().currentConversation?.id || null;
     if (conversationId) {
       store.setError(null);
+      store.setSystemUpdating(true);
       void api
         .appendSystemText(conversationId, systemText)
         .then(() => {
-          addSystemMessage(buildSystemConfirmation(systemText, true));
+          addSystemMessage(
+            buildSystemConfirmation(systemText, true, store.getState().selectedModel, {
+              title: store.getState().currentConversation?.title || 'this conversation',
+            })
+          );
         })
         .catch((error) => {
           store.setError(error instanceof Error ? error.message : 'Failed to update system text.');
+        })
+        .finally(() => {
+          store.setSystemUpdating(false);
         });
       return true;
     }
     store.appendSystemText(systemText);
-    addSystemMessage(buildSystemConfirmation(systemText, false));
+    addSystemMessage(
+      buildSystemConfirmation(systemText, false, store.getState().selectedModel, {
+        title: 'next message',
+      })
+    );
     store.setError(null);
     return true;
   }
@@ -570,16 +582,21 @@ function addSystemMessage(content: string): void {
   store.addMessage(systemMessage);
 }
 
-function buildSystemConfirmation(text: string, persisted: boolean): string {
+function buildSystemConfirmation(
+  text: string,
+  persisted: boolean,
+  modelId: string,
+  scope: { title: string }
+): string {
   const header = persisted
-    ? 'System text appended for this conversation:'
-    : 'System text queued for the next message:';
+    ? `System text appended for ${scope.title}:`
+    : `System text queued for ${scope.title}:`;
   const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
   const quoted = preview
     .split('\n')
     .map((line) => `> ${line}`)
     .join('\n');
-  return `${header}\n\n${quoted}`;
+  return `${header}\n\n- Model: **${modelId}**\n- Length: **${text.length} chars**\n\n${quoted}`;
 }
 
 function findModel(query: string): ModelInfo | null {

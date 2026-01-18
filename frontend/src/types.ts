@@ -92,6 +92,7 @@ export interface AppState {
   usageOverall: UsageSummary | null;
   usageDevice: UsageSummary | null;
   isStreaming: boolean;
+  systemUpdating: boolean;
   error: string | null;
   sidebarOpen: boolean;
 }

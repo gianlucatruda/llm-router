@@ -24,6 +24,7 @@ class LLMClient:
         messages: list[dict[str, str]],
         temperature: float | None = None,
         reasoning: str | None = None,
+        system_prompt: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         Stream chat completions from the specified provider.
@@ -42,7 +43,9 @@ class LLMClient:
             ):
                 yield token
         elif provider == "anthropic":
-            async for token in self._stream_anthropic(model, messages, temperature, reasoning):
+            async for token in self._stream_anthropic(
+                model, messages, temperature, reasoning, system_prompt
+            ):
                 yield token
         else:
             raise ValueError(f"Unsupported provider: {provider}")
@@ -78,12 +81,15 @@ class LLMClient:
         messages: list[dict[str, str]],
         temperature: float | None,
         reasoning: str | None,
+        system_prompt: str | None,
     ) -> AsyncGenerator[str, None]:
         """Stream completions from Anthropic API."""
         try:
-            system_prompt = " ".join(
-                msg["content"] for msg in messages if msg.get("role") == "system"
-            ).strip()
+            resolved_system = (system_prompt or "").strip()
+            if not resolved_system:
+                resolved_system = "\n".join(
+                    msg["content"] for msg in messages if msg.get("role") == "system"
+                ).strip()
             filtered_messages = [
                 msg for msg in messages if msg.get("role") in {"user", "assistant"}
             ]
@@ -95,8 +101,8 @@ class LLMClient:
             if temperature is not None:
                 params["temperature"] = temperature
             system_bits = []
-            if system_prompt:
-                system_bits.append(system_prompt)
+            if resolved_system:
+                system_bits.append(resolved_system)
             if reasoning:
                 system_bits.append(f"Reasoning level: {reasoning}.")
             if system_bits:
