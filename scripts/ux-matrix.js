@@ -2,13 +2,24 @@ const { chromium } = require('playwright');
 
 const BASE_URL = process.env.UX_BASE_URL || 'http://127.0.0.1:5173/';
 
-const cases = [
+const baseCases = [
   { model: 'gpt-5.1', reasoning: 'low', temp: '0.3', expectReasoning: true },
   { model: 'o1', reasoning: 'low', temp: '0.0', expectReasoning: true },
   { model: 'o3', reasoning: 'high', temp: '0.0', expectReasoning: true },
   { model: 'gpt-4o', reasoning: 'low', temp: '0.7', expectReasoning: false },
-  { model: 'claude-3-5-sonnet-20240620', reasoning: 'low', temp: '0.5', expectReasoning: false },
 ];
+
+async function getAvailableAnthropicModel() {
+  try {
+    const resp = await fetch('http://127.0.0.1:8000/api/usage/models');
+    const data = await resp.json();
+    const available = data.models
+      .filter((model) => model.provider === 'anthropic' && model.available);
+    return available[0]?.id || null;
+  } catch (error) {
+    return null;
+  }
+}
 
 async function waitForModelReady(page) {
   await page.waitForFunction(() => {
@@ -40,6 +51,14 @@ async function run() {
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
   await waitForModelReady(page);
+
+  const anthroModel = await getAvailableAnthropicModel();
+  const cases = [
+    ...baseCases,
+    ...(anthroModel
+      ? [{ model: anthroModel, reasoning: 'low', temp: '0.5', expectReasoning: false }]
+      : []),
+  ];
 
   for (const test of cases) {
     log(`case: ${test.model}`);
