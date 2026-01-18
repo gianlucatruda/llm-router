@@ -12,6 +12,7 @@ import type {
 
 const API_BASE = '/api';
 const DEVICE_KEY = 'llm-router-device-id';
+let volatileDeviceId: string | null = null;
 
 function getDeviceId(): string {
   try {
@@ -23,7 +24,10 @@ function getDeviceId(): string {
     localStorage.setItem(DEVICE_KEY, generated);
     return generated;
   } catch (error) {
-    return 'unknown-device';
+    if (!volatileDeviceId) {
+      volatileDeviceId = crypto.randomUUID();
+    }
+    return volatileDeviceId;
   }
 }
 
