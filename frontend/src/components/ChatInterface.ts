@@ -9,11 +9,12 @@ import { createModelSelector } from './ModelSelector';
 import { createMessageList, renderMessages, renderStreamingMessage } from './MessageList';
 import { createMessageInput } from './MessageInput';
 import { getCommandHelp, getCommandSuggestions, parseCommand } from '../commands';
-import type { ModelCatalog, ModelInfo, Message } from '../types';
+import type { ModelCatalog, ModelInfo, Message, VersionInfo } from '../types';
 
 let models: ModelInfo[] = [];
 let catalogDefaults: ModelCatalog['defaults'] | null = null;
 let pollTimer: number | null = null;
+let versionInfo: VersionInfo | null = null;
 
 export async function createChatInterface(): Promise<HTMLElement> {
   const app = document.createElement('div');
@@ -45,6 +46,12 @@ export async function createChatInterface(): Promise<HTMLElement> {
   }
 
   syncDefaults();
+
+  try {
+    versionInfo = await api.getVersion();
+  } catch (error) {
+    versionInfo = null;
+  }
 
   // Create header
   const header = createHeader();
@@ -119,6 +126,7 @@ export async function createChatInterface(): Promise<HTMLElement> {
   await loadConversations();
   await loadUsage();
   checkPendingPoll();
+  updateVersionLabel(app);
 
   return app;
 }
@@ -142,7 +150,7 @@ function createHeader(): HTMLElement {
 
   const version = document.createElement('span');
   version.className = 'title-version';
-  version.textContent = 'v0.2 alpha';
+  version.textContent = buildVersionLabel();
 
   const subtitle = document.createElement('span');
   subtitle.className = 'title-sub';
@@ -190,6 +198,7 @@ function createErrorBanner(): HTMLElement {
 
 function render(app: HTMLElement): void {
   const state = store.getState();
+  updateVersionLabel(app);
 
   // Update error banner
   const errorBanner = app.querySelector('.error-banner') as HTMLElement;
@@ -246,6 +255,20 @@ function render(app: HTMLElement): void {
   if (inputArea && inputArea.setDisabled) {
     inputArea.setDisabled(state.isStreaming);
   }
+}
+
+function buildVersionLabel(): string {
+  if (!versionInfo) {
+    return 'v0.2 alpha';
+  }
+  const commit = versionInfo.commit_short || 'dev';
+  return `v${versionInfo.version} alpha • ${commit}`;
+}
+
+function updateVersionLabel(app: HTMLElement): void {
+  const version = app.querySelector('.title-version');
+  if (!version) return;
+  version.textContent = buildVersionLabel();
 }
 
 async function loadConversations(): Promise<void> {

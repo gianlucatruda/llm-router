@@ -69,7 +69,15 @@ async def create_conversation(
     await db.flush()
     await db.refresh(conversation)
 
-    return conversation
+    return ConversationResponse(
+        id=conversation.id,
+        title=conversation.title,
+        model=conversation.model,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        system_prompt=conversation.system_prompt,
+        messages=[],
+    )
 
 
 @router.delete("/{conversation_id}")

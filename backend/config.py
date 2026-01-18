@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     }
 
 
+APP_VERSION = "0.2.1"
+
 DEFAULT_MODEL = "gpt-5.1"
 DEFAULT_REASONING = "low"
 DEFAULT_TEMPERATURE = 0.2

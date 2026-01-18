@@ -81,7 +81,7 @@ Use this in your homelab `docker-compose.yml` to build directly from a tagged re
 ```yaml
 services:
   llm-router:
-    build: https://github.com/gianlucatruda/llm-router.git#v0.2.0
+    build: https://github.com/gianlucatruda/llm-router.git#v0.2.1
     env_file: .env
     ports:
       - "8000:8000"

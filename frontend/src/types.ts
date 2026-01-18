@@ -72,6 +72,12 @@ export interface UsageSummary {
   }>;
 }
 
+export interface VersionInfo {
+  version: string;
+  commit: string | null;
+  commit_short: string;
+}
+
 export interface AppState {
   conversations: ConversationListItem[];
   currentConversation: Conversation | null;

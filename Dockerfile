@@ -19,6 +19,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
+
 # Install dependencies with uv
 RUN pip install --no-cache-dir uv
 COPY backend/pyproject.toml backend/uv.lock ./
