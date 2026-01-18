@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,17 +27,26 @@ class ImageResponse(BaseModel):
 
 
 @router.post("/generate", response_model=ImageResponse)
-async def generate_image(request: ImageRequest, db: AsyncSession = Depends(get_db)):
+async def generate_image(
+    request: ImageRequest, http_request: Request, db: AsyncSession = Depends(get_db)
+):
     if request.conversation_id:
         result = await db.execute(
-            select(Conversation).where(Conversation.id == request.conversation_id)
+            select(Conversation).where(
+                Conversation.id == request.conversation_id,
+                Conversation.device_id == http_request.state.device_id,
+            )
         )
         conversation = result.scalar_one_or_none()
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
     else:
         title = request.prompt[:50] + ("..." if len(request.prompt) > 50 else "")
-        conversation = Conversation(title=title, model=request.model)
+        conversation = Conversation(
+            title=title,
+            model=request.model,
+            device_id=getattr(http_request.state, "device_id", None),
+        )
         db.add(conversation)
         await db.flush()
 

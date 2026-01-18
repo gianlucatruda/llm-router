@@ -185,6 +185,13 @@ export async function cloneConversation(id: string): Promise<Conversation> {
   });
 }
 
+export async function appendSystemText(id: string, systemText: string): Promise<void> {
+  await fetchJSON(`${API_BASE}/conversations/${id}/system`, {
+    method: 'POST',
+    body: JSON.stringify({ system_text: systemText }),
+  });
+}
+
 /**
  * Get available models
  */

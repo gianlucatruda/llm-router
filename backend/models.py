@@ -59,6 +59,10 @@ class CreateConversationRequest(BaseModel):
     model: str = "gpt-5.1"
 
 
+class SystemPromptUpdateRequest(BaseModel):
+    system_text: str
+
+
 class UsageSummary(BaseModel):
     total_tokens_input: int
     total_tokens_output: int

@@ -157,7 +157,9 @@ def get_provider(model: str) -> str:
             return provider
     if model.startswith("claude"):
         return "anthropic"
-    if model.startswith(("gpt-", "o1", "o3")):
+    if model.startswith("gpt-") or (
+        model.startswith("o") and len(model) > 1 and model[1].isdigit()
+    ):
         return "openai"
     raise ValueError(f"Unknown model: {model}")
 

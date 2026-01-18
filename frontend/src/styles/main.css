@@ -444,6 +444,7 @@ body::after {
   line-height: 1.7;
   max-width: min(620px, 100%);
   box-shadow: none;
+  overflow-wrap: anywhere;
 }
 
 .message.user .message-content {
@@ -469,6 +470,24 @@ body::after {
 
 .message-content p:last-child {
   margin-bottom: 0;
+}
+
+.message-content ul,
+.message-content ol {
+  margin: 0 0 12px 0;
+  padding-left: 18px;
+}
+
+.message-content li {
+  margin: 4px 0;
+}
+
+.message-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  margin: 8px 0;
 }
 
 .message-content pre {

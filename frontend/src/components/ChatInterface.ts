@@ -401,7 +401,15 @@ async function handleSendMessage(message: string): Promise<void> {
       (error) => {
         store.setStreaming(false);
         store.setError(error);
-        store.appendToLastMessage(`Error: ${error}`);
+        const errorContent = `${streamed}\n\nError: ${error}`;
+        store.setLastMessageStatus('error', errorContent);
+        if (messageList) {
+          renderStreamingMessage(
+            messageList,
+            errorContent,
+            buildErrorMeta(state.selectedModel, effectiveTemp, effectiveReasoning)
+          );
+        }
       }
     );
     store.clearSystemText();
@@ -499,12 +507,26 @@ function handleCommand(input: string): boolean {
     return true;
   }
   if (parsed.id === 'system') {
-    if (!parsed.arg.trim()) {
+    const systemText = parsed.arg.trim();
+    if (!systemText) {
       store.setError('System text cannot be empty.');
       return true;
     }
-    store.appendSystemText(parsed.arg.trim());
-    addSystemMessage('System text appended for this conversation.');
+    const conversationId = store.getState().currentConversation?.id || null;
+    if (conversationId) {
+      store.setError(null);
+      void api
+        .appendSystemText(conversationId, systemText)
+        .then(() => {
+          addSystemMessage(buildSystemConfirmation(systemText, true));
+        })
+        .catch((error) => {
+          store.setError(error instanceof Error ? error.message : 'Failed to update system text.');
+        });
+      return true;
+    }
+    store.appendSystemText(systemText);
+    addSystemMessage(buildSystemConfirmation(systemText, false));
     store.setError(null);
     return true;
   }
@@ -523,6 +545,18 @@ function addSystemMessage(content: string): void {
     created_at: Date.now() / 1000,
   };
   store.addMessage(systemMessage);
+}
+
+function buildSystemConfirmation(text: string, persisted: boolean): string {
+  const header = persisted
+    ? 'System text appended for this conversation:'
+    : 'System text queued for the next message:';
+  const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
+  const quoted = preview
+    .split('\n')
+    .map((line) => `> ${line}`)
+    .join('\n');
+  return `${header}\n\n${quoted}`;
 }
 
 function findModel(query: string): ModelInfo | null {
@@ -679,5 +713,16 @@ function buildStreamingMeta(
     parts.push(`reasoning ${reasoning}`);
   }
   parts.push('streaming');
+  return parts.join(' • ');
+}
+
+function buildErrorMeta(model: string, temperature: number | null, reasoning: string): string {
+  const parts = ['error', model];
+  if (temperature !== null) {
+    parts.push(`temp ${temperature.toFixed(2)}`);
+  }
+  if (reasoning) {
+    parts.push(`reasoning ${reasoning}`);
+  }
   return parts.join(' • ');
 }

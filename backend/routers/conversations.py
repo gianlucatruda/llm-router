@@ -1,6 +1,8 @@
 """Conversation management endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,26 +12,37 @@ from models import (
     ConversationListItem,
     ConversationResponse,
     CreateConversationRequest,
+    SystemPromptUpdateRequest,
 )
+from services.system_prompt import append_system_text
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
 
 @router.get("", response_model=list[ConversationListItem])
-async def list_conversations(db: AsyncSession = Depends(get_db)):
+async def list_conversations(request: Request, db: AsyncSession = Depends(get_db)):
     """List all conversations, sorted by most recent first."""
-    result = await db.execute(select(Conversation).order_by(Conversation.updated_at.desc()))
+    device_id = getattr(request.state, "device_id", None)
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.device_id == device_id)
+        .order_by(Conversation.updated_at.desc())
+    )
     conversations = result.scalars().all()
     return conversations
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
-async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
+async def get_conversation(
+    conversation_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Get a specific conversation with all messages."""
     result = await db.execute(
         select(Conversation)
         .options(selectinload(Conversation.messages))
-        .where(Conversation.id == conversation_id)
+        .where(
+            Conversation.id == conversation_id, Conversation.device_id == request.state.device_id
+        )
     )
     conversation = result.scalar_one_or_none()
 
@@ -44,12 +57,13 @@ async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_
 
 @router.post("", response_model=ConversationResponse)
 async def create_conversation(
-    request: CreateConversationRequest, db: AsyncSession = Depends(get_db)
+    request: CreateConversationRequest, http_request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Create a new conversation."""
     conversation = Conversation(
         title=request.title,
         model=request.model,
+        device_id=getattr(http_request.state, "device_id", None),
     )
     db.add(conversation)
     await db.flush()
@@ -59,9 +73,15 @@ async def create_conversation(
 
 
 @router.delete("/{conversation_id}")
-async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_conversation(
+    conversation_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Delete a conversation and all its messages."""
-    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id, Conversation.device_id == request.state.device_id
+        )
+    )
     conversation = result.scalar_one_or_none()
 
     if not conversation:
@@ -74,13 +94,17 @@ async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(g
 
 
 @router.post("/{conversation_id}/clone", response_model=ConversationResponse)
-async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(get_db)):
+async def clone_conversation(
+    conversation_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Clone a conversation with all its messages."""
     # Get original conversation with messages
     result = await db.execute(
         select(Conversation)
         .options(selectinload(Conversation.messages))
-        .where(Conversation.id == conversation_id)
+        .where(
+            Conversation.id == conversation_id, Conversation.device_id == request.state.device_id
+        )
     )
     original = result.scalar_one_or_none()
 
@@ -92,6 +116,7 @@ async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(ge
         title=f"{original.title} (clone)",
         model=original.model,
         system_prompt=original.system_prompt,
+        device_id=original.device_id,
     )
     db.add(cloned)
     await db.flush()
@@ -124,3 +149,32 @@ async def clone_conversation(conversation_id: str, db: AsyncSession = Depends(ge
     cloned = result.scalar_one()
 
     return cloned
+
+
+@router.post("/{conversation_id}/system")
+async def append_system_prompt(
+    conversation_id: str,
+    request: SystemPromptUpdateRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Append system prompt text for a conversation."""
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.device_id == http_request.state.device_id,
+        )
+    )
+    conversation = result.scalar_one_or_none()
+
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if not request.system_text.strip():
+        raise HTTPException(status_code=400, detail="System text cannot be empty")
+
+    conversation.system_prompt = append_system_text(conversation.system_prompt, request.system_text)
+    conversation.updated_at = int(datetime.now().timestamp())
+    await db.flush()
+
+    return {"status": "updated"}

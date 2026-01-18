@@ -22,6 +22,7 @@ class Conversation(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     model: Mapped[str] = mapped_column(String, nullable=False)
     system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    device_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[int] = mapped_column(
         Integer, nullable=False, default=lambda: int(datetime.now().timestamp())
     )
@@ -32,6 +33,8 @@ class Conversation(Base):
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
     )
+
+    __table_args__ = (Index("idx_conversations_device_id", "device_id"),)
 
 
 class Message(Base):
@@ -116,6 +119,11 @@ async def init_db():
         conversation_columns = {row[1] for row in result.fetchall()}
         if "system_prompt" not in conversation_columns:
             await conn.exec_driver_sql("ALTER TABLE conversations ADD COLUMN system_prompt TEXT")
+        if "device_id" not in conversation_columns:
+            await conn.exec_driver_sql("ALTER TABLE conversations ADD COLUMN device_id VARCHAR")
+        await conn.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS idx_conversations_device_id ON conversations(device_id)"
+        )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

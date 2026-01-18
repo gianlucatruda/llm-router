@@ -1,7 +1,7 @@
 """Chat API endpoints with SSE streaming and background processing."""
 
-import json
 import asyncio
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
@@ -13,6 +13,7 @@ from config import get_provider
 from database import Conversation, Message, async_session_maker, get_db
 from models import ChatRequest, ChatSubmitResponse
 from services.llm_client import llm_client
+from services.system_prompt import append_system_text
 from services.usage_tracker import calculate_cost, log_usage
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -35,7 +36,10 @@ async def stream_chat(
             # Get or create conversation
             if request.conversation_id:
                 result = await db.execute(
-                    select(Conversation).where(Conversation.id == request.conversation_id)
+                    select(Conversation).where(
+                        Conversation.id == request.conversation_id,
+                        Conversation.device_id == http_request.state.device_id,
+                    )
                 )
                 conversation = result.scalar_one_or_none()
                 if not conversation:
@@ -47,6 +51,7 @@ async def stream_chat(
                 conversation = Conversation(
                     title=title,
                     model=request.model,
+                    device_id=getattr(http_request.state, "device_id", None),
                 )
                 db.add(conversation)
                 await db.flush()
@@ -169,7 +174,10 @@ async def submit_chat(
     """Submit a chat request for background processing."""
     if request.conversation_id:
         result = await db.execute(
-            select(Conversation).where(Conversation.id == request.conversation_id)
+            select(Conversation).where(
+                Conversation.id == request.conversation_id,
+                Conversation.device_id == http_request.state.device_id,
+            )
         )
         conversation = result.scalar_one_or_none()
         if not conversation:
@@ -181,6 +189,7 @@ async def submit_chat(
         conversation = Conversation(
             title=title,
             model=request.model,
+            device_id=getattr(http_request.state, "device_id", None),
         )
         db.add(conversation)
         await db.flush()
@@ -332,11 +341,3 @@ async def build_message_history(db: AsyncSession, conversation_id: str) -> list[
         if msg.role != "system" and msg.content and msg.status not in {"pending", "error"}
     )
     return message_history
-
-
-def append_system_text(current: str | None, addition: str | None) -> str:
-    if not addition:
-        return (current or "").strip()
-    if not current:
-        return addition.strip()
-    return f"{current.strip()}\n{addition.strip()}"

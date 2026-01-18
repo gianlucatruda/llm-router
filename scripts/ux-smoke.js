@@ -14,6 +14,28 @@ function screenshotPath(label) {
   return path.join(SCREEN_DIR, `${TS}-${label}.png`);
 }
 
+async function waitForModelReady(page) {
+  await page.waitForFunction(() => {
+    const meta = document.querySelector('.model-meta');
+    return meta && (meta.textContent || '').trim().length > 0;
+  }, { timeout: 10000 });
+}
+
+async function waitForAssistantDone(page) {
+  await page.waitForFunction(() => {
+    const metas = Array.from(document.querySelectorAll('.message.assistant .message-meta'));
+    if (metas.length === 0) return false;
+    return metas.every((el) => {
+      const text = (el.textContent || '').toLowerCase();
+      return !text.includes('pending') && !text.includes('streaming');
+    });
+  }, { timeout: 20000 });
+  await page.waitForFunction(() => {
+    const content = document.querySelector('.message.assistant:last-child .message-content');
+    return content && (content.textContent || '').trim().length > 0;
+  }, { timeout: 20000 });
+}
+
 async function run() {
   ensureDir();
   const browser = await chromium.launch({ headless: true });
@@ -23,6 +45,7 @@ async function run() {
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
+  await waitForModelReady(page);
   await page.screenshot({ path: screenshotPath('mobile-home') });
   log('loaded mobile view');
 
@@ -58,28 +81,24 @@ async function run() {
   await page.keyboard.press('Enter');
   log('sent haiku message');
 
-  await page.waitForFunction(() => {
-    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-      .some((el) => (el.textContent || '').includes('pending'));
-    return !pending;
-  }, { timeout: 15000 });
+  await waitForAssistantDone(page);
   const assistantContent = await page.$eval('.message.assistant .message-content', (el) => el.textContent || '');
   log(`assistant content length: ${assistantContent.trim().length}`);
 
   await page.fill('.message-input', 'Return a JavaScript function that sums an array.');
   await page.keyboard.press('Enter');
   log('sent code request');
-  await page.waitForFunction(() => {
-    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-      .some((el) => (el.textContent || '').includes('pending'));
-    return !pending;
-  }, { timeout: 15000 });
+  await waitForAssistantDone(page);
 
   const codeBlocks = await page.$$eval('pre code', (items) => items.length);
   log(`code blocks found: ${codeBlocks}`);
 
   await page.click('.menu-button');
   await page.waitForSelector('.panel-overlay.visible');
+  await page.waitForFunction(() => {
+    const items = document.querySelectorAll('.conversation-item');
+    return items.length > 0;
+  }, { timeout: 10000 });
   const items = await page.$$eval('.conversation-item', (els) => els.length);
   log(`conversation items: ${items}`);
 
@@ -91,6 +110,7 @@ async function run() {
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.messages-container');
+  await waitForAssistantDone(page);
   const afterReload = await page.$$eval('.message', (els) => els.length);
   log(`messages after reload: ${afterReload}`);
 

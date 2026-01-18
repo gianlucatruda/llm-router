@@ -71,6 +71,16 @@ class Store {
     this.notify();
   }
 
+  setLastMessageStatus(status: string, content?: string): void {
+    if (this.state.messages.length === 0) return;
+    const lastMessage = this.state.messages[this.state.messages.length - 1];
+    lastMessage.status = status;
+    if (content !== undefined) {
+      lastMessage.content = content;
+    }
+    this.notify();
+  }
+
   setSelectedModel(model: string): void {
     this.state.selectedModel = model;
     localStorage.setItem('selectedModel', model);

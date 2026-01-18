@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 import httpx
@@ -11,13 +10,19 @@ from config import DEFAULT_MODEL, DEFAULT_REASONING, DEFAULT_TEMPERATURE, FALLBA
 from models import ModelCatalog, ModelDefaults, ModelInfo
 from services.llm_client import llm_client
 
-OPENAI_PREFIXES = ("gpt-", "o1", "o3")
-ANTHROPIC_PREFIXES = ("claude",)
 OPENAI_EXCLUDE_SUBSTRINGS = ("audio", "realtime")
 
 
-def _matches_prefix(model_id: str, prefixes: Iterable[str]) -> bool:
-    return any(model_id.startswith(prefix) for prefix in prefixes)
+def _is_openai_reasoning_model(model_id: str) -> bool:
+    return model_id.startswith("o") and len(model_id) > 1 and model_id[1].isdigit()
+
+
+def _is_openai_model_id(model_id: str) -> bool:
+    return model_id.startswith("gpt-") or _is_openai_reasoning_model(model_id)
+
+
+def _is_anthropic_model_id(model_id: str) -> bool:
+    return model_id.startswith("claude")
 
 
 def _merge_models(
@@ -28,13 +33,11 @@ def _merge_models(
     allow_fallback_only = not live_models
     if live_models:
         for model_id in sorted(live_set):
-            if provider == "openai" and not _matches_prefix(model_id, OPENAI_PREFIXES):
+            if provider == "openai" and not _is_openai_model_id(model_id):
                 continue
-            if provider == "anthropic" and not _matches_prefix(model_id, ANTHROPIC_PREFIXES):
+            if provider == "anthropic" and not _is_anthropic_model_id(model_id):
                 continue
             if provider == "openai" and any(part in model_id for part in OPENAI_EXCLUDE_SUBSTRINGS):
-                continue
-            if model_id not in fallback and not _allow_live_only(provider, model_id):
                 continue
             fallback_meta = fallback.get(model_id, {})
             inferred = _infer_capabilities(provider, model_id)
@@ -86,7 +89,7 @@ def _merge_models(
 
 def _infer_capabilities(provider: str, model_id: str) -> dict[str, Any]:
     if provider == "openai":
-        if model_id.startswith(("o1", "o3")):
+        if _is_openai_reasoning_model(model_id):
             return {
                 "supports_reasoning": True,
                 "reasoning_levels": ["low", "medium", "high"],
@@ -103,12 +106,6 @@ def _infer_capabilities(provider: str, model_id: str) -> dict[str, Any]:
         "reasoning_levels": [],
         "supports_temperature": True,
     }
-
-
-def _allow_live_only(provider: str, model_id: str) -> bool:
-    if provider != "openai":
-        return False
-    return model_id.startswith(("gpt-4o", "gpt-4.1", "gpt-4", "gpt-3.5"))
 
 
 def _coerce_str(value: Any, fallback: str) -> str:

@@ -14,6 +14,28 @@ function screenshotPath(label) {
   return path.join(SCREEN_DIR, `${TS}-${label}.png`);
 }
 
+async function waitForModelReady(page) {
+  await page.waitForFunction(() => {
+    const meta = document.querySelector('.model-meta');
+    return meta && (meta.textContent || '').trim().length > 0;
+  }, { timeout: 10000 });
+}
+
+async function waitForAssistantDone(page) {
+  await page.waitForFunction(() => {
+    const metas = Array.from(document.querySelectorAll('.message.assistant .message-meta'));
+    if (metas.length === 0) return false;
+    return metas.every((el) => {
+      const text = (el.textContent || '').toLowerCase();
+      return !text.includes('pending') && !text.includes('streaming');
+    });
+  }, { timeout: 20000 });
+  await page.waitForFunction(() => {
+    const content = document.querySelector('.message.assistant:last-child .message-content');
+    return content && (content.textContent || '').trim().length > 0;
+  }, { timeout: 20000 });
+}
+
 async function run() {
   ensureDir();
   const browser = await chromium.launch({ headless: true });
@@ -25,18 +47,19 @@ async function run() {
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
+  await waitForModelReady(page);
 
   await page.fill('.message-input', 'Write two lines about neon rain.');
   await page.keyboard.press('Enter');
   log('sent poetry');
-  await page.waitForFunction(() => {
-    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-      .some((el) => (el.textContent || '').includes('pending'));
-    return !pending;
-  }, { timeout: 15000 });
+  await waitForAssistantDone(page);
 
   await page.click('.menu-button');
   await page.waitForSelector('.panel-overlay.visible');
+  await page.waitForFunction(() => {
+    const items = document.querySelectorAll('.conversation-item');
+    return items.length > 0;
+  }, { timeout: 10000 });
   await page.screenshot({ path: screenshotPath('sessions-after-poetry') });
 
   const firstItem = await page.$('.conversation-item');
@@ -64,6 +87,7 @@ async function run() {
 
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 8000 });
   await page.waitForSelector('.messages-container');
+  await waitForAssistantDone(page);
   const afterReload = await page.$$eval('.message', (els) => els.length);
   log(`messages after reload: ${afterReload}`);
 
