@@ -631,7 +631,7 @@ async function handleImageCommand(raw: string): Promise<void> {
   const assistantMessage: Message = {
     id: `image-${Date.now()}-assistant`,
     role: 'assistant',
-    content: `Generating image\\nPrompt: ${prompt}\\nModel: ${model}\\nSize: ${size}`,
+    content: `Prompt: ${prompt}\nModel: ${model}\nSize: ${size}`,
     model,
     status: 'pending-image',
     created_at: timestamp,
@@ -673,6 +673,9 @@ function parseImageArgs(raw: string): { prompt: string; model: string; size: str
     }
     promptParts.push(token);
   });
+  if (promptParts.length > 1 && promptParts[0].toLowerCase() === 'prompt') {
+    promptParts.shift();
+  }
   return { prompt: promptParts.join(' '), model, size };
 }
 
