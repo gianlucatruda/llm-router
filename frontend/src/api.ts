@@ -2,7 +2,13 @@
  * API client for backend communication
  */
 
-import type { Conversation, ConversationListItem, ModelCatalog, UsageSummary } from './types';
+import type {
+  Conversation,
+  ConversationListItem,
+  ModelCatalog,
+  UsageSummary,
+  VersionInfo,
+} from './types';
 
 const API_BASE = '/api';
 const DEVICE_KEY = 'llm-router-device-id';
@@ -185,6 +191,13 @@ export async function cloneConversation(id: string): Promise<Conversation> {
   });
 }
 
+export async function appendSystemText(id: string, systemText: string): Promise<void> {
+  await fetchJSON(`${API_BASE}/conversations/${id}/system`, {
+    method: 'POST',
+    body: JSON.stringify({ system_text: systemText }),
+  });
+}
+
 /**
  * Get available models
  */
@@ -197,6 +210,10 @@ export async function getModelCatalog(): Promise<ModelCatalog> {
  */
 export async function getUsageSummary(scope: 'overall' | 'device'): Promise<UsageSummary> {
   return fetchJSON<UsageSummary>(`${API_BASE}/usage/summary?scope=${scope}`);
+}
+
+export async function getVersion(): Promise<VersionInfo> {
+  return fetchJSON<VersionInfo>(`${API_BASE}/version`);
 }
 
 export async function generateImage(

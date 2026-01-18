@@ -1,4 +1,13 @@
 {
+  "scripts": {
+    "test:api": "node scripts/api-smoke.js",
+    "test:image": "node scripts/image-smoke.js",
+    "test:ux": "node scripts/ux-smoke.js",
+    "test:ux:extended": "node scripts/ux-extended.js",
+    "test:ux:matrix": "node scripts/ux-matrix.js",
+    "test:ux:manual": "node scripts/ux-manual.js",
+    "test:all": "npm run test:api && npm run test:image && npm run test:ux && npm run test:ux:extended && npm run test:ux:matrix && npm run test:ux:manual"
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "playwright": "^1.57.0"

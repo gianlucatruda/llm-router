@@ -2,13 +2,46 @@ const { chromium } = require('playwright');
 
 const BASE_URL = process.env.UX_BASE_URL || 'http://127.0.0.1:5173/';
 
-const cases = [
+const baseCases = [
   { model: 'gpt-5.1', reasoning: 'low', temp: '0.3', expectReasoning: true },
   { model: 'o1', reasoning: 'low', temp: '0.0', expectReasoning: true },
   { model: 'o3', reasoning: 'high', temp: '0.0', expectReasoning: true },
   { model: 'gpt-4o', reasoning: 'low', temp: '0.7', expectReasoning: false },
-  { model: 'claude-3-5-sonnet-20240620', reasoning: 'low', temp: '0.5', expectReasoning: false },
 ];
+
+async function getAvailableAnthropicModel() {
+  try {
+    const resp = await fetch('http://127.0.0.1:8000/api/usage/models');
+    const data = await resp.json();
+    const available = data.models
+      .filter((model) => model.provider === 'anthropic' && model.available);
+    return available[0]?.id || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function waitForModelReady(page) {
+  await page.waitForFunction(() => {
+    const meta = document.querySelector('.model-meta');
+    return meta && (meta.textContent || '').trim().length > 0;
+  }, { timeout: 10000 });
+}
+
+async function waitForAssistantDone(page) {
+  await page.waitForFunction(() => {
+    const metas = Array.from(document.querySelectorAll('.message.assistant .message-meta'));
+    if (metas.length === 0) return false;
+    return metas.every((el) => {
+      const text = (el.textContent || '').toLowerCase();
+      return !text.includes('pending') && !text.includes('streaming');
+    });
+  }, { timeout: 20000 });
+  await page.waitForFunction(() => {
+    const content = document.querySelector('.message.assistant:last-child .message-content');
+    return content && (content.textContent || '').trim().length > 0;
+  }, { timeout: 20000 });
+}
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
@@ -17,14 +50,23 @@ async function run() {
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
+  await waitForModelReady(page);
+
+  const anthroModel = await getAvailableAnthropicModel();
+  const cases = [
+    ...baseCases,
+    ...(anthroModel
+      ? [{ model: anthroModel, reasoning: 'low', temp: '0.5', expectReasoning: false }]
+      : []),
+  ];
 
   for (const test of cases) {
     log(`case: ${test.model}`);
     await page.fill('.message-input', `/model ${test.model}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
-    const selectedValue = await page.$eval('.model-selector', (el) => el.value);
-    log(`selected model: ${selectedValue}`);
+    const selectedLabel = await page.$eval('.model-header .control-link', (el) => el.textContent || '');
+    log(`selected model: ${selectedLabel.trim()}`);
 
     await page.fill('.message-input', `/reasoning ${test.reasoning}`);
     await page.keyboard.press('Enter');
@@ -46,11 +88,7 @@ async function run() {
 
     await page.fill('.message-input', `Quick check for ${test.model}.`);
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => {
-      const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-        .some((el) => (el.textContent || '').includes('pending'));
-      return !pending;
-    }, { timeout: 15000 });
+    await waitForAssistantDone(page);
 
     const meta = await page.$eval('.message.assistant:last-child .message-meta', (el) => el.textContent || '');
     log(`meta: ${meta.trim()}`);

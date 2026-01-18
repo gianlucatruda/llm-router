@@ -9,11 +9,12 @@ import { createModelSelector } from './ModelSelector';
 import { createMessageList, renderMessages, renderStreamingMessage } from './MessageList';
 import { createMessageInput } from './MessageInput';
 import { getCommandHelp, getCommandSuggestions, parseCommand } from '../commands';
-import type { ModelCatalog, ModelInfo, Message } from '../types';
+import type { ModelCatalog, ModelInfo, Message, VersionInfo } from '../types';
 
 let models: ModelInfo[] = [];
 let catalogDefaults: ModelCatalog['defaults'] | null = null;
 let pollTimer: number | null = null;
+let versionInfo: VersionInfo | null = null;
 
 export async function createChatInterface(): Promise<HTMLElement> {
   const app = document.createElement('div');
@@ -45,6 +46,12 @@ export async function createChatInterface(): Promise<HTMLElement> {
   }
 
   syncDefaults();
+
+  try {
+    versionInfo = await api.getVersion();
+  } catch (error) {
+    versionInfo = null;
+  }
 
   // Create header
   const header = createHeader();
@@ -119,6 +126,7 @@ export async function createChatInterface(): Promise<HTMLElement> {
   await loadConversations();
   await loadUsage();
   checkPendingPoll();
+  updateVersionLabel(app);
 
   return app;
 }
@@ -142,7 +150,7 @@ function createHeader(): HTMLElement {
 
   const version = document.createElement('span');
   version.className = 'title-version';
-  version.textContent = 'v0.2 alpha';
+  version.textContent = buildVersionLabel();
 
   const subtitle = document.createElement('span');
   subtitle.className = 'title-sub';
@@ -190,6 +198,7 @@ function createErrorBanner(): HTMLElement {
 
 function render(app: HTMLElement): void {
   const state = store.getState();
+  updateVersionLabel(app);
 
   // Update error banner
   const errorBanner = app.querySelector('.error-banner') as HTMLElement;
@@ -246,6 +255,20 @@ function render(app: HTMLElement): void {
   if (inputArea && inputArea.setDisabled) {
     inputArea.setDisabled(state.isStreaming);
   }
+}
+
+function buildVersionLabel(): string {
+  if (!versionInfo) {
+    return 'v0.2 alpha';
+  }
+  const commit = versionInfo.commit_short || 'dev';
+  return `v${versionInfo.version} alpha • ${commit}`;
+}
+
+function updateVersionLabel(app: HTMLElement): void {
+  const version = app.querySelector('.title-version');
+  if (!version) return;
+  version.textContent = buildVersionLabel();
 }
 
 async function loadConversations(): Promise<void> {
@@ -401,7 +424,15 @@ async function handleSendMessage(message: string): Promise<void> {
       (error) => {
         store.setStreaming(false);
         store.setError(error);
-        store.appendToLastMessage(`Error: ${error}`);
+        const errorContent = `${streamed}\n\nError: ${error}`;
+        store.setLastMessageStatus('error', errorContent);
+        if (messageList) {
+          renderStreamingMessage(
+            messageList,
+            errorContent,
+            buildErrorMeta(state.selectedModel, effectiveTemp, effectiveReasoning)
+          );
+        }
       }
     );
     store.clearSystemText();
@@ -499,12 +530,26 @@ function handleCommand(input: string): boolean {
     return true;
   }
   if (parsed.id === 'system') {
-    if (!parsed.arg.trim()) {
+    const systemText = parsed.arg.trim();
+    if (!systemText) {
       store.setError('System text cannot be empty.');
       return true;
     }
-    store.appendSystemText(parsed.arg.trim());
-    addSystemMessage('System text appended for this conversation.');
+    const conversationId = store.getState().currentConversation?.id || null;
+    if (conversationId) {
+      store.setError(null);
+      void api
+        .appendSystemText(conversationId, systemText)
+        .then(() => {
+          addSystemMessage(buildSystemConfirmation(systemText, true));
+        })
+        .catch((error) => {
+          store.setError(error instanceof Error ? error.message : 'Failed to update system text.');
+        });
+      return true;
+    }
+    store.appendSystemText(systemText);
+    addSystemMessage(buildSystemConfirmation(systemText, false));
     store.setError(null);
     return true;
   }
@@ -523,6 +568,18 @@ function addSystemMessage(content: string): void {
     created_at: Date.now() / 1000,
   };
   store.addMessage(systemMessage);
+}
+
+function buildSystemConfirmation(text: string, persisted: boolean): string {
+  const header = persisted
+    ? 'System text appended for this conversation:'
+    : 'System text queued for the next message:';
+  const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
+  const quoted = preview
+    .split('\n')
+    .map((line) => `> ${line}`)
+    .join('\n');
+  return `${header}\n\n${quoted}`;
 }
 
 function findModel(query: string): ModelInfo | null {
@@ -564,6 +621,23 @@ async function handleImageCommand(raw: string): Promise<void> {
     store.setError('Image prompt cannot be empty.');
     return;
   }
+  const timestamp = Date.now() / 1000;
+  const userMessage: Message = {
+    id: `image-${Date.now()}-user`,
+    role: 'user',
+    content: `/image ${prompt} model=${model} size=${size}`,
+    created_at: timestamp,
+  };
+  const assistantMessage: Message = {
+    id: `image-${Date.now()}-assistant`,
+    role: 'assistant',
+    content: `Prompt: ${prompt}\nModel: ${model}\nSize: ${size}`,
+    model,
+    status: 'pending-image',
+    created_at: timestamp,
+  };
+  store.addMessage(userMessage);
+  store.addMessage(assistantMessage);
   store.setStreaming(true);
   try {
     const result = await api.generateImage(
@@ -599,6 +673,19 @@ function parseImageArgs(raw: string): { prompt: string; model: string; size: str
     }
     promptParts.push(token);
   });
+  if (promptParts.length > 1) {
+    const first = promptParts[0].toLowerCase();
+    if (first === 'prompt') {
+      promptParts.shift();
+    } else if (first.startsWith('prompt:') || first.startsWith('prompt=')) {
+      const stripped = promptParts[0].slice('prompt:'.length);
+      if (stripped) {
+        promptParts[0] = stripped;
+      } else {
+        promptParts.shift();
+      }
+    }
+  }
   return { prompt: promptParts.join(' '), model, size };
 }
 
@@ -679,5 +766,16 @@ function buildStreamingMeta(
     parts.push(`reasoning ${reasoning}`);
   }
   parts.push('streaming');
+  return parts.join(' • ');
+}
+
+function buildErrorMeta(model: string, temperature: number | null, reasoning: string): string {
+  const parts = ['error', model];
+  if (temperature !== null) {
+    parts.push(`temp ${temperature.toFixed(2)}`);
+  }
+  if (reasoning) {
+    parts.push(`reasoning ${reasoning}`);
+  }
   return parts.join(' • ');
 }

@@ -46,6 +46,13 @@ Retro terminal-inspired, mobile-first web app that routes queries through person
 ### Deployment
 - Docker Compose remains simple and robust for homelab usage.
 
+## v0.2.1 Patch Notes (Implemented)
+
+- Device-scoped conversations (session list and access limited by device id).
+- Model catalog includes live OpenAI o-series variants and all Claude models.
+- `/system` updates persist immediately for active conversations and show details in confirmations.
+- Message styling fixes for list indentation and responsive images.
+
 ## v0.3 Requirements (Planned)
 
 - Conversation search.

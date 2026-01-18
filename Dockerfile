@@ -19,6 +19,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ARG GIT_SHA=dev
+ARG GIT_COMMIT
+ARG GIT_REF
+ARG VCS_REF
+ARG SOURCE_COMMIT
+ARG SOURCE_REF
+ARG REVISION
+ENV GIT_SHA=${GIT_SHA:-${GIT_COMMIT:-${VCS_REF:-${SOURCE_COMMIT:-${REVISION:-}}}}}
+ENV GIT_REF=${GIT_REF:-${SOURCE_REF:-}}
+ENV APP_GIT_REF=${GIT_REF:-${SOURCE_REF:-dev}}
+
 # Install dependencies with uv
 RUN pip install --no-cache-dir uv
 COPY backend/pyproject.toml backend/uv.lock ./

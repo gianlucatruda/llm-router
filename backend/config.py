@@ -1,6 +1,13 @@
 """Configuration management for LLM Router."""
 
+import json
+import os
+import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 from pydantic_settings import BaseSettings
 
@@ -17,6 +24,13 @@ class Settings(BaseSettings):
         "case_sensitive": False,
     }
 
+
+APP_VERSION = "0.2.1"
+APP_GIT_REF = os.getenv("APP_GIT_REF", "dev")
+APP_REPO = os.getenv("APP_REPO", "gianlucatruda/llm-router")
+APP_COMMIT_FILE = os.getenv("APP_COMMIT_FILE", "/app/.git-sha")
+
+_GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 DEFAULT_MODEL = "gpt-5.1"
 DEFAULT_REASONING = "low"
@@ -157,9 +171,56 @@ def get_provider(model: str) -> str:
             return provider
     if model.startswith("claude"):
         return "anthropic"
-    if model.startswith(("gpt-", "o1", "o3")):
+    if model.startswith("gpt-") or (
+        model.startswith("o") and len(model) > 1 and model[1].isdigit()
+    ):
         return "openai"
     raise ValueError(f"Unknown model: {model}")
 
 
 settings = Settings()
+
+
+def _normalize_sha(value: str | None) -> str | None:
+    if not value:
+        return None
+    value = value.strip()
+    if not _GIT_SHA_RE.fullmatch(value):
+        return None
+    return value.lower()
+
+
+def _read_commit_file(path: str) -> str | None:
+    try:
+        return _normalize_sha(Path(path).read_text().strip())
+    except (FileNotFoundError, OSError):
+        return None
+
+
+def _resolve_github_ref(repo: str, ref: str) -> str | None:
+    if not repo or not ref:
+        return None
+    url = f"https://api.github.com/repos/{repo}/commits/{ref}"
+    request = Request(url, headers={"User-Agent": "llm-router"})
+    try:
+        with urlopen(request, timeout=2) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return _normalize_sha(payload.get("sha"))
+    except (URLError, ValueError, OSError):
+        return None
+
+
+@lru_cache(maxsize=1)
+def get_commit_info() -> tuple[str | None, str]:
+    for key in ("GIT_SHA", "GIT_COMMIT", "VCS_REF", "SOURCE_COMMIT", "REVISION"):
+        sha = _normalize_sha(os.getenv(key))
+        if sha:
+            return sha, sha[:7]
+    sha = _read_commit_file(APP_COMMIT_FILE)
+    if sha:
+        return sha, sha[:7]
+    ref = os.getenv("GIT_REF") or os.getenv("SOURCE_REF") or APP_GIT_REF
+    sha = _resolve_github_ref(APP_REPO, ref)
+    if sha:
+        return sha, sha[:7]
+    return None, "dev"

@@ -8,8 +8,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from config import APP_VERSION, get_commit_info
 from database import init_db
-from routers import chat, conversations, usage, images
+from routers import chat, conversations, images, usage
 
 
 @asynccontextmanager
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LLM Router",
     description="Self-hosted chat interface for multiple LLM providers",
-    version="0.2.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -60,6 +61,17 @@ async def device_id_middleware(request: Request, call_next):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api/version")
+async def version_info():
+    """Return build/version information."""
+    commit, commit_short = get_commit_info()
+    return {
+        "version": APP_VERSION,
+        "commit": commit,
+        "commit_short": commit_short,
+    }
 
 
 # Serve static files (frontend) - only when static directory exists

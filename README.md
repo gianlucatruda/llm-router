@@ -67,26 +67,48 @@ cd backend && uv run ruff check . --fix && uvx ty check
 
 2. **Deploy**
    ```bash
-   # Standard deployment
    docker-compose up -d
-
-   # For Raspberry Pi (ARM64)
-   docker-compose -f docker-compose.yml -f docker-compose.pi.yml up -d
    ```
 
-### Docker Compose (build from Git tag)
+### Docker Compose (Git build examples)
 
-Use this in your homelab `docker-compose.yml` to build directly from a tagged release:
+Use these as a starting point in your homelab `docker-compose.yml` to build directly from a tag or branch:
 
 ```yaml
 services:
-  llm-router:
-    build: https://github.com/gianlucatruda/llm-router.git#v0.2.0
-    env_file: .env
-    ports:
-      - "8000:8000"
+  llm:
+    build: https://github.com/gianlucatruda/llm-router.git#v0.2
+    container_name: llm
+    networks:
+      - lan_net
+      - wan_net
+    env_file:
+      - .secrets/llm # OPENAI_API_KEY and ANTHROPIC_API_KEY
+    environment:
+      - DATABASE_PATH=./data/llm-router.db
     volumes:
-      - ./data:/app/data
+      - ${HOMELAB_DATA_DIR}/llm:/app/data
+    restart: unless-stopped
+
+  llm-dev:
+    build: https://github.com/gianlucatruda/llm-router.git#dev
+    container_name: llm-dev
+    networks:
+      - lan_net
+      - wan_net
+    env_file:
+      - .secrets/llm-dev # OPENAI_API_KEY and ANTHROPIC_API_KEY
+    environment:
+      - DATABASE_PATH=./data/llm-router.db
+    volumes:
+      - ${HOMELAB_DATA_DIR}/llm-dev:/app/data
+    restart: unless-stopped
+
+networks:
+  lan_net:
+    external: true
+  wan_net:
+    external: true
 ```
 
 Note: the Dockerfile installs backend deps via `uv sync` using `backend/pyproject.toml` + `backend/uv.lock`.

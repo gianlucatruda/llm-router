@@ -14,12 +14,26 @@ function screenshotPath(label) {
   return path.join(SCREEN_DIR, `${TS}-${label}.png`);
 }
 
+async function waitForModelReady(page) {
+  await page.waitForFunction(() => {
+    const meta = document.querySelector('.model-meta');
+    return meta && (meta.textContent || '').trim().length > 0;
+  }, { timeout: 10000 });
+}
+
 async function waitForAssistant(page) {
   await page.waitForFunction(() => {
     const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-      .some((el) => (el.textContent || '').includes('pending'));
+      .some((el) => {
+        const text = (el.textContent || '').toLowerCase();
+        return text.includes('pending') || text.includes('streaming');
+      });
     return !pending;
-  }, { timeout: 15000 });
+  }, { timeout: 20000 });
+  await page.waitForFunction(() => {
+    const content = document.querySelector('.message.assistant:last-child .message-content');
+    return content && (content.textContent || '').trim().length > 0;
+  }, { timeout: 20000 });
 }
 
 async function run() {
@@ -30,6 +44,7 @@ async function run() {
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.header');
+  await waitForModelReady(page);
   await page.screenshot({ path: screenshotPath('start') });
 
   // Slash command suggestions

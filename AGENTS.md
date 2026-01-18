@@ -57,6 +57,7 @@ This project follows specific design principles and tooling preferences:
 - **API smoke**: `node scripts/api-smoke.js`
 - **Image smoke**: `node scripts/image-smoke.js`
 - Use real API keys from `.env` for live testing (no mocks for v0.2)
+- Avoid one-off test scripts for fixes; expand the automated suite instead to prevent regressions.
 
 ### Formatting & Checks (Run Often)
 - **Backend format**: `cd backend && uv run ruff format .`

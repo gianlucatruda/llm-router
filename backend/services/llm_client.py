@@ -188,7 +188,10 @@ class LLMClient:
 
 
 def _use_responses_api(model: str) -> bool:
-    return model.lower().startswith(("gpt-5", "o1", "o3"))
+    model_id = model.lower()
+    return model_id.startswith("gpt-5") or (
+        model_id.startswith("o") and len(model_id) > 1 and model_id[1].isdigit()
+    )
 
 
 # Singleton instance
