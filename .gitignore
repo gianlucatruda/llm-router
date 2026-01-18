@@ -1,5 +1,7 @@
 docs/screenshots/*
 docs/reference/*
+.claude/*
+.codex/*
 
 # Python
 __pycache__/
