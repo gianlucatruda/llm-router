@@ -1,0 +1,5 @@
+2026-01-23 19:35 - Initialize agent workflow logging instructions
+- Issues: not queried (no GitHub issue lookup yet)
+- Changes: AGENTS.md (added agent workflow requirements), LOG.txt (created)
+- Tests: not run (no code changes)
+- Notes: shell commands emit sandbox .gitconfig lock and tmux errors; ignored for now

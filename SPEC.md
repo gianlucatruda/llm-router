@@ -12,46 +12,478 @@ Retro terminal-inspired, mobile-first web app that routes queries through person
 - **Providers**: OpenAI + Anthropic
 - **Identity**: Device-scoped usage tracking
 
-## v0.2 Requirements (Implemented)
+## Quick Command Reference
 
-### Visual + UX
-- Retro terminal-inspired, Tokyo Night aesthetic with Ubuntu Mono Nerd Font (CDN).
-- Mobile-first; touch-friendly; copy button per message.
-- Rich formatting (markdown + code highlighting) styled like a TUI.
+### Development
 
-### Models + Controls
-- Dynamic model catalogs from provider APIs; fallback list when unavailable.
-- Includes OpenAI + Anthropic, reasoning models (o1/o3), GPT-5.x, Claude Sonnet 4.5.
-- Default: GPT-5.1 with low reasoning.
-- Slash commands with autocomplete:
-  - `/model <name|id>`
-  - `/temp <0-2>`
-  - `/reasoning <low|medium|high>`
-  - `/help`
-- Command definitions centralized for easy edits.
+```bash
+# Backend
+cd backend
+uv sync                          # Install/sync dependencies
+uv run uvicorn main:app --reload # Run dev server with hot reload
+uv run uvicorn main:app --host 0.0.0.0 --port 8000  # Run on specific host/port
 
-### Statistics
-- Device + overall usage (tokens + cost) surfaced in UI.
+# Linting and Type Checking
+uv run ruff check .              # Lint code
+uv run ruff check . --fix        # Auto-fix linting issues
+uv run ruff format .             # Format code
+uvx ty check                     # Type check with ty (Astral's type checker)
 
-### Background Processing
-- Submit a request, create a pending assistant message, and poll until complete.
-- Responses finish even if the UI is closed; refresh resumes via polling.
-- Device identity uses localStorage-first with cookie fallback.
-- When the UI is active and online, responses stream in real time.
+# Frontend
+cd frontend
+npm install                      # Install dependencies
+npm run dev                      # Run dev server (http://localhost:5173)
+npm run build                    # Build for production
+npm run preview                  # Preview production build
 
-### Commands + Media
-- `/system` to append per-conversation system prompt.
-- `/image` for OpenAI image generation (DALL·E 2/3, gpt-image).
+# Full Stack Development
+# Terminal 1: cd backend && uv run uvicorn main:app --reload
+# Terminal 2: cd frontend && npm run dev
+# Access: http://localhost:5173 (Vite proxies /api to backend)
 
-### Deployment
-- Docker Compose remains simple and robust for homelab usage.
+# Pre-commit checks (run before committing)
+cd backend && uv run ruff check . --fix && uv run ruff format . && uvx ty check
+```
 
-## v0.2.1 Patch Notes (Implemented)
+### Production
 
-- Device-scoped conversations (session list and access limited by device id).
-- Model catalog includes live OpenAI o-series variants and all Claude models.
-- `/system` updates persist immediately for active conversations and show details in confirmations.
-- Message styling fixes for list indentation and responsive images.
+```bash
+# Build and run single container
+docker build -t llm-router .
+docker run -p 8000:8000 --env-file .env llm-router
+
+# Or use docker-compose
+docker-compose up -d              # Start services
+docker-compose logs -f            # View logs
+docker-compose down               # Stop services
+
+# Raspberry Pi (ARM64)
+docker-compose -f docker-compose.yml -f docker-compose.pi.yml up -d
+```
+
+### Testing
+
+```bash
+# Backend health check
+curl http://localhost:8000/health
+
+# List conversations
+curl http://localhost:8000/api/conversations
+
+# Get models
+curl http://localhost:8000/api/usage/models
+
+# Backend tests (when implemented)
+cd backend
+uv run pytest
+
+# Frontend tests (when implemented)
+cd frontend
+npm test
+```
+
+## Full Test Suite (Run Before Release)
+
+```bash
+# Backend lint/format/type check
+cd backend
+uv run ruff check . --fix
+uv run ruff format .
+PYTHONPATH=. uvx ty check
+
+# Frontend typecheck/build
+cd frontend
+npm run build
+
+# API smoke
+cd ..
+node scripts/api-smoke.js
+
+# Image smoke
+node scripts/image-smoke.js
+
+# UX / Playwright (screenshots saved to docs/screenshots/)
+node scripts/ux-smoke.js
+node scripts/ux-extended.js
+node scripts/ux-matrix.js
+node scripts/ux-manual.js
+
+# Docker build + smoke
+docker build -t llm-router:dev .
+docker run -p 8000:8000 --env-file .env llm-router:dev
+curl http://localhost:8000/health
+```
+
+## Project Structure
+
+```
+llm-router/
+├── backend/                    # Python FastAPI backend
+│   ├── pyproject.toml         # Python dependencies (uv)
+│   ├── main.py                # FastAPI app entry + static serving
+│   ├── config.py              # Settings, model configs
+│   ├── database.py            # SQLAlchemy models
+│   ├── models.py              # Pydantic schemas
+│   ├── routers/               # API route handlers
+│   │   ├── chat.py           # SSE streaming endpoint
+│   │   ├── conversations.py  # CRUD endpoints
+│   │   └── usage.py          # Usage stats endpoints
+│   └── services/              # Business logic
+│       ├── llm_client.py     # OpenAI/Anthropic client
+│       └── usage_tracker.py  # Token counting, costs
+├── frontend/                   # Vanilla TypeScript + Vite
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   ├── index.html
+│   └── src/
+│       ├── main.ts            # Entry point
+│       ├── types.ts           # TypeScript definitions
+│       ├── api.ts             # Backend API client
+│       ├── components/        # UI components
+│       ├── state/             # Reactive state
+│       └── styles/            # CSS
+├── Dockerfile                  # Single-container build
+├── docker-compose.yml          # Deployment config
+├── .env                        # API keys (gitignored)
+└── data/                       # SQLite database (gitignored)
+```
+
+## Architecture
+
+### Backend (Python FastAPI)
+
+**Key Components:**
+
+1. **main.py** - FastAPI application
+   - Lifespan: Database initialization
+   - CORS middleware for dev
+   - Static file serving for production
+   - Health check endpoint
+
+2. **database.py** - SQLAlchemy async models
+   - Conversation: Chat sessions
+   - Message: Individual messages
+   - UsageLog: Token usage tracking
+   - Uses aiosqlite for async SQLite
+
+3. **routers/chat.py** - SSE streaming endpoint
+   - `POST /api/chat/stream`
+   - Accepts message, model, optional conversation_id
+   - Streams tokens via Server-Sent Events
+   - Calculates tokens/cost, logs usage
+
+4. **services/llm_client.py** - LLM API abstraction
+   - Unified interface for OpenAI and Anthropic
+   - Async streaming support
+   - Token counting with tiktoken
+
+5. **config.py** - Configuration management
+   - Environment variables (pydantic-settings)
+   - Model pricing configuration
+   - Provider mappings
+
+**Database Schema:**
+
+```sql
+conversations (id, title, model, created_at, updated_at)
+messages (id, conversation_id, role, content, model, tokens_input, tokens_output, cost, created_at)
+usage_logs (id, conversation_id, model, provider, tokens_input, tokens_output, cost, timestamp)
+```
+
+**API Endpoints:**
+
+- `POST /api/chat/stream` - Stream chat (SSE)
+- `GET /api/conversations` - List conversations
+- `GET /api/conversations/{id}` - Get conversation with messages
+- `POST /api/conversations` - Create conversation
+- `DELETE /api/conversations/{id}` - Delete conversation
+- `POST /api/conversations/{id}/clone` - Clone conversation
+- `GET /api/usage/summary` - Usage statistics
+- `GET /api/usage/models` - Available models
+- `GET /health` - Health check
+
+### Frontend (Vanilla TypeScript)
+
+**Key Components:**
+
+1. **main.ts** - Application initialization
+   - Creates ChatInterface
+   - Mounts to DOM
+
+2. **state/store.ts** - Reactive state management
+   - Proxy-based reactivity
+   - Pub/sub pattern for updates
+   - LocalStorage for selectedModel
+
+3. **api.ts** - Backend communication
+   - Fetch wrappers for REST endpoints
+   - SSE client for streaming
+   - Error handling
+
+4. **components/** - UI components
+   - **ChatInterface.ts** - Main app container
+   - **MessageList.ts** - Message rendering with markdown
+   - **MessageInput.ts** - Textarea with auto-grow
+   - **ModelSelector.ts** - Model dropdown
+   - **Sidebar.ts** - Conversation list
+
+**State Flow:**
+
+```
+User Action → Component Handler → Store Action → State Update → Notify Subscribers → Re-render
+```
+
+**Streaming Flow:**
+
+```
+User sends message → POST /api/chat/stream
+                  → Receives SSE events
+                  → "token" events: append to message
+                  → "done" event: finalize, reload conversation
+                  → "error" event: show error
+```
+
+## Development Workflow
+
+### Adding a New Model
+
+1. Update `backend/config.py`:
+   ```python
+   MODELS = {
+       "openai": {
+           "new-model": {
+               "name": "Display Name",
+               "input_cost": 0.001,
+               "output_cost": 0.002,
+           }
+       }
+   }
+   ```
+
+2. No frontend changes needed - models are fetched dynamically
+
+### Adding a New API Endpoint
+
+1. Create router in `backend/routers/`
+2. Add Pydantic models in `backend/models.py`
+3. Include router in `backend/main.py`:
+   ```python
+   from routers import new_router
+   app.include_router(new_router.router)
+   ```
+4. Add client function in `frontend/src/api.ts`
+5. Call from components
+
+### Modifying Database Schema
+
+1. Update models in `backend/database.py`
+2. For production, use Alembic migrations (not yet implemented)
+3. For dev, delete `data/llm-router.db` and restart
+
+### Adding a New UI Component
+
+1. Create TypeScript file in `frontend/src/components/`
+2. Export function that returns HTMLElement
+3. Subscribe to store for reactive updates
+4. Import and use in parent component
+
+## Environment Variables
+
+Required:
+- `OPENAI_API_KEY` - OpenAI API key
+
+Optional:
+- `ANTHROPIC_API_KEY` - Anthropic API key
+- `DATABASE_PATH` - SQLite database path (default: `./data/llm-router.db`)
+
+## Deployment
+
+### Docker Single Container
+
+The Dockerfile uses multi-stage build:
+
+1. **Stage 1 (frontend-builder)**: Builds frontend with Node
+2. **Stage 2 (backend)**: Python runtime + backend code + static files from stage 1
+
+FastAPI serves both API (`/api/*`) and static files (`/`).
+
+### Docker Compose
+
+Services:
+- `llm-router`: Single container exposing port 8000
+
+Volumes:
+- `./data:/app/data` - Persist SQLite database
+
+### Platform-Specific
+
+- **Raspberry Pi**: Use `docker-compose.pi.yml` override for ARM64 images
+- **VPS**: Same as Pi, optionally add Caddy for HTTPS
+- **Local Dev**: Run backend + frontend separately for hot reload
+
+## Debugging
+
+### Backend Issues
+
+```bash
+# Check logs
+docker-compose logs -f llm-router
+
+# Access container
+docker-compose exec llm-router /bin/sh
+
+# Check database
+cd backend
+uv run python -c "from database import engine; print(engine.url)"
+
+# Verify API keys
+cd backend
+uv run python -c "from config import settings; print(settings.openai_api_key[:10])"
+```
+
+### Frontend Issues
+
+```bash
+# Check Vite dev server
+cd frontend
+npm run dev -- --debug
+
+# Build and check for errors
+npm run build
+
+# Clear cache
+rm -rf node_modules dist
+npm install
+npm run build
+```
+
+### SSE Streaming Issues
+
+- Chrome DevTools → Network → Check EventStream connections
+- Look for `text/event-stream` content type
+- Check CORS headers if using dev server
+
+### Database Issues
+
+```bash
+# Inspect database
+cd data
+sqlite3 llm-router.db
+.tables
+.schema conversations
+SELECT * FROM conversations;
+```
+
+## Testing Strategy
+
+### Unit Tests (TODO)
+
+- Backend: pytest with async support
+- Frontend: Vitest for component logic
+
+### Integration Tests (TODO)
+
+- Test SSE streaming end-to-end
+- Test conversation CRUD operations
+- Test usage tracking accuracy
+
+### Manual Testing
+
+1. Start backend and frontend
+2. Send a message (new conversation)
+3. Verify streaming response
+4. Check conversation saved
+5. Switch models, send another message
+6. Clone conversation
+7. Delete conversation
+8. Check usage stats
+
+## Performance Optimization
+
+### Backend
+
+- SQLite async via aiosqlite
+- FastAPI async endpoints
+- Streaming reduces memory usage
+- Connection pooling for DB
+
+### Frontend
+
+- Vanilla JS (no framework overhead)
+- Vite for fast builds
+- Code splitting (TODO)
+- Lazy load highlight.js languages (TODO)
+
+### Docker
+
+- Multi-stage build reduces image size
+- Alpine-based images where possible
+- Layer caching optimized
+
+## Security Considerations
+
+- API keys in environment variables (not committed)
+- No auth in v0.2 (rely on network security)
+- SQLite file permissions
+- CORS restricted to localhost in dev
+- No XSS (markdown sanitization via marked.js)
+
+## Future Enhancements
+
+### v0.2
+- Anthropic/Claude support
+- System prompts
+- Image generation
+
+### v0.3
+- Conversation search
+- Export conversations
+- Dark mode
+- Usage analytics dashboard
+- Multi-user with auth
+- Local models (Ollama)
+- PWA support
+
+## Troubleshooting
+
+### "Module not found" errors
+- Backend: Check imports use relative paths (not `backend.module`)
+- Frontend: Check `tsconfig.json` paths
+
+### Database locked
+- Only one writer at a time with SQLite
+- Check for hung connections
+- Restart backend
+
+### Port conflicts
+- Backend: Check port 8000 not in use
+- Frontend: Check port 5173 not in use
+- Change in `vite.config.ts` or uvicorn command
+
+### Streaming not working
+- Check EventSource browser support
+- Verify CORS headers
+- Check backend logs for errors
+
+### Docker build fails
+- Clear cache: `docker system prune -a`
+- Check .dockerignore
+- Verify all files committed
+
+## Contributing
+
+When making changes:
+
+1. Test locally (backend + frontend dev servers)
+2. Run builds: `npm run build` and `docker build`
+3. Update this file if architecture changes
+4. Update README.md if user commands change
+5. Add entries to SPEC.md for major features
+
+## License
+
+MIT - See LICENSE file
 
 ## v0.3 Requirements (Planned)
 
@@ -78,8 +510,3 @@ Retro terminal-inspired, mobile-first web app that routes queries through person
 - `GET /api/usage/summary?scope=overall|device`
 - `GET /api/usage/models`
 - `POST /api/images/generate`
-
-## Notes
-
-- No auth in v0.2/v0.3; rely on network isolation.
-- Single container per environment; SQLite persists at `./data/llm-router.db`.
