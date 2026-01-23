@@ -1,17 +1,5 @@
-2026-01-23 20:03 - Document new autonomy and permissions constraints
-- Issues: not queried yet (awaiting gh issue view)
-- Changes: AGENTS.md (branch safety, approved commands, smoke-test guidance)
-- Tests: not run (docs-only change)
-- Notes: user granted autonomy and approved `gh --repo ...`, `uv sync`, `npm install`; never switch branches
-
-2026-01-23 19:45 - Tidy SPEC.md structure and remove redundant detail
-- Issues: not queried (no GitHub issue lookup yet)
-- Changes: SPEC.md (condensed summary, scope, endpoints, roadmap)
-- Tests: not run (docs-only change)
-- Notes: SPEC now points to AGENTS.md and README.md for commands/setup
-
-2026-01-23 19:35 - Initialize agent workflow logging instructions
-- Issues: not queried (no GitHub issue lookup yet)
-- Changes: AGENTS.md (added agent workflow requirements), LOG.txt (created)
-- Tests: not run (no code changes)
-- Notes: shell commands emit sandbox .gitconfig lock and tmux errors; ignored for now
+2026-01-23 20:33 - Expand AGENTS.md with continuous testing and refinement loop requirements
+- Issues: not queried (doc-only update)
+- Changes: AGENTS.md (continuous lint/format/tests/build, completion test gate, 3x refinement loop, autonomy expectations)
+- Tests: not run (doc-only change)
+- Notes: new policy requires repeated refinement + re-testing unless explicitly waived

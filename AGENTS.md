@@ -4,15 +4,20 @@ Technical documentation for developers and AI agents working on this codebase.
 
 ## Agent Workflow Requirements
 
-- Progress log: Record all progress in `LOG.txt` using prepend-only entries (add new entries at the top; never edit past entries).
+- Progress log: Record all progress in `LOG.txt` using append-only entries (add new entries at the top; never edit past entries).
 - Log detail: Include decisions made, bugs encountered, libraries added, features implemented, tests added/run, user requirements added, issues fixed, and new issues detected, with references (issue numbers, file paths, commands).
 - Branch: Work on fixes in the `dev` branch unless told otherwise. You may commit on branches other than `main` / `master`, but you may NEVER push and you may NEVER commit on `main`/`master`.
 - Issue tracking: Only run read-only GitHub issue queries when explicitly instructed (e.g. `gh --repo gianlucatruda/llm-router issue list` and `gh --repo gianlucatruda/llm-router issue view <issue_number>`). NEVER create or modify issues. You can mark them as solved in `LOG.txt` for your benefit.
 - Issue status: Maintain a running record of outstanding issues and their details within `LOG.txt` entries; update status as work progresses.
 - Branch safety: NEVER switch branches. Assume the user places you on the correct branch (currently `dev`). You may commit on branches other than `main`/`master`, but you may NEVER push and you may NEVER commit on `main`/`master`.
 - Permissions: Read-only `gh --repo gianlucatruda/llm-router ...` commands are approved. `uv sync` and `npm install` are approved. Costly smoke tests are allowed but should be run sparingly after lint/build pass.
+- Continuous checks: MUST ALWAYS run linting, formatting, unit tests, and build checks continuously while developing (unless explicitly told not to).
+- Completion gate: When a feature is believed complete, MUST ALWAYS run smoke, integration, e2e, and manual tests (unless explicitly told not to).
+- Refinement loop: After tests pass, MUST ALWAYS simplify/refine code to remove redundancy/inelegance without changing functionality, then re-run lint/format/tests/build. Repeat this refinement loop at least 3x unless explicitly told otherwise.
+- Logging: MUST ALWAYS append to `LOG.txt` after work; never skip the append-only log update.
+- Autonomy: Always behave as a long-running, fully autonomous agent that does comprehensive testing, refactoring, and documentation for multi-feature work without supervision.
 
-`LOG.txt` entry format example (prepend-only):
+`LOG.txt` entry format example (append-only):
 
 ```
 YYYY-MM-DD HH:MM - Short summary
