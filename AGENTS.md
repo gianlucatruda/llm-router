@@ -9,6 +9,8 @@ Technical documentation for developers and AI agents working on this codebase.
 - Branch: Work on fixes in the `dev` branch unless told otherwise. You may commit on branches other than `main` / `master`, but you may NEVER push and you may NEVER commit on `main`/`master`.
 - Issue tracking: Only run read-only GitHub issue queries when explicitly instructed (e.g. `gh --repo gianlucatruda/llm-router issue list` and `gh --repo gianlucatruda/llm-router issue view <issue_number>`). NEVER create or modify issues. You can mark them as solved in `LOG.txt` for your benefit.
 - Issue status: Maintain a running record of outstanding issues and their details within `LOG.txt` entries; update status as work progresses.
+- Branch safety: NEVER switch branches. Assume the user places you on the correct branch (currently `dev`). You may commit on branches other than `main`/`master`, but you may NEVER push and you may NEVER commit on `main`/`master`.
+- Permissions: Read-only `gh --repo gianlucatruda/llm-router ...` commands are approved. `uv sync` and `npm install` are approved. Costly smoke tests are allowed but should be run sparingly after lint/build pass.
 
 `LOG.txt` entry format example (prepend-only):
 
@@ -98,4 +100,3 @@ This project follows specific design principles and tooling preferences:
 - Design for easy VPS migration
 - Consider adding Caddy for HTTPS in v0.3
 - Anthropic support is included in v0.2
-

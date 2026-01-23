@@ -1,3 +1,9 @@
+2026-01-23 20:03 - Document new autonomy and permissions constraints
+- Issues: not queried yet (awaiting gh issue view)
+- Changes: AGENTS.md (branch safety, approved commands, smoke-test guidance)
+- Tests: not run (docs-only change)
+- Notes: user granted autonomy and approved `gh --repo ...`, `uv sync`, `npm install`; never switch branches
+
 2026-01-23 19:45 - Tidy SPEC.md structure and remove redundant detail
 - Issues: not queried (no GitHub issue lookup yet)
 - Changes: SPEC.md (condensed summary, scope, endpoints, roadmap)
