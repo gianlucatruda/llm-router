@@ -1,0 +1,11 @@
+2026-01-23 19:45 - Tidy SPEC.md structure and remove redundant detail
+- Issues: not queried (no GitHub issue lookup yet)
+- Changes: SPEC.md (condensed summary, scope, endpoints, roadmap)
+- Tests: not run (docs-only change)
+- Notes: SPEC now points to AGENTS.md and README.md for commands/setup
+
+2026-01-23 19:35 - Initialize agent workflow logging instructions
+- Issues: not queried (no GitHub issue lookup yet)
+- Changes: AGENTS.md (added agent workflow requirements), LOG.txt (created)
+- Tests: not run (no code changes)
+- Notes: shell commands emit sandbox .gitconfig lock and tmux errors; ignored for now

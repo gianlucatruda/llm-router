@@ -1,85 +1,78 @@
 # LLM Router - Product Spec
 
-## Project Overview
+## Summary
+- Self-hosted, single-user LLM router with a retro terminal UI.
+- Mobile-first web app that routes prompts through personal API keys.
+- Single container deployment: FastAPI backend, SQLite database, static frontend.
 
-Retro terminal-inspired, mobile-first web app that routes queries through personal API keys. Designed for self-hosted single-user setups with a single-container deployment (FastAPI + SQLite + static frontend).
+## Decisions (v0.2 locked)
+- Single container deployment with FastAPI + SQLite.
+- Vanilla TypeScript + Vite frontend, no frameworks.
+- No auth in v0.2; rely on network isolation.
+- Minimal dependencies and explicit, readable code.
 
-## Current Architecture (Implemented)
+## Current Scope (v0.2 implemented)
+- Chat: SSE streaming and non-streaming submit.
+- Conversations: list, fetch, create, delete, clone.
+- System prompts: append per conversation.
+- Usage tracking: per-model totals with overall or device scope.
+- Model catalog endpoint with pricing metadata.
+- Image generation endpoint (OpenAI).
+- Providers: OpenAI and Anthropic.
+- FastAPI serves static frontend in production.
 
-- **Frontend**: Vanilla TypeScript + Vite
-- **Backend**: FastAPI (async) + SQLite (aiosqlite)
-- **Deployment**: Single Docker image; Docker Compose for homelab
-- **Providers**: OpenAI + Anthropic
-- **Identity**: Device-scoped usage tracking
+## Architecture Summary
+- Backend: FastAPI async + SQLAlchemy async (aiosqlite), SSE for streaming.
+- Frontend: vanilla TypeScript components with lightweight store, Vite build.
+- Deployment: single Docker image, Docker Compose for local or homelab.
 
-## v0.2 Requirements (Implemented)
+## Data Model
+```
+conversations (id, title, model, system_prompt, device_id, created_at, updated_at)
+messages (id, conversation_id, role, content, model, temperature, reasoning, status,
+         tokens_input, tokens_output, cost, created_at)
+usage_logs (id, conversation_id, model, provider, device_id,
+           tokens_input, tokens_output, cost, timestamp)
+```
 
-### Visual + UX
-- Retro terminal-inspired, Tokyo Night aesthetic with Ubuntu Mono Nerd Font (CDN).
-- Mobile-first; touch-friendly; copy button per message.
-- Rich formatting (markdown + code highlighting) styled like a TUI.
+## API Endpoints (current)
+- GET /health
+- POST /api/chat/stream
+- POST /api/chat/submit
+- GET /api/conversations
+- GET /api/conversations/{id}
+- POST /api/conversations
+- DELETE /api/conversations/{id}
+- POST /api/conversations/{id}/clone
+- POST /api/conversations/{id}/system
+- GET /api/usage/summary?scope=overall|device
+- GET /api/usage/models
+- POST /api/images/generate
 
-### Models + Controls
-- Dynamic model catalogs from provider APIs; fallback list when unavailable.
-- Includes OpenAI + Anthropic, reasoning models (o1/o3), GPT-5.x, Claude Sonnet 4.5.
-- Default: GPT-5.1 with low reasoning.
-- Slash commands with autocomplete:
-  - `/model <name|id>`
-  - `/temp <0-2>`
-  - `/reasoning <low|medium|high>`
-  - `/help`
-- Command definitions centralized for easy edits.
+## Configuration
+Required:
+- OPENAI_API_KEY
 
-### Statistics
-- Device + overall usage (tokens + cost) surfaced in UI.
+Optional:
+- ANTHROPIC_API_KEY
+- DATABASE_PATH (default: ./data/llm-router.db)
 
-### Background Processing
-- Submit a request, create a pending assistant message, and poll until complete.
-- Responses finish even if the UI is closed; refresh resumes via polling.
-- Device identity uses localStorage-first with cookie fallback.
-- When the UI is active and online, responses stream in real time.
+## Testing Status
+- Smoke scripts live in `scripts/` (api, image, ux).
+- Unit and integration tests are still pending.
 
-### Commands + Media
-- `/system` to append per-conversation system prompt.
-- `/image` for OpenAI image generation (DALL·E 2/3, gpt-image).
-
-### Deployment
-- Docker Compose remains simple and robust for homelab usage.
-
-## v0.2.1 Patch Notes (Implemented)
-
-- Device-scoped conversations (session list and access limited by device id).
-- Model catalog includes live OpenAI o-series variants and all Claude models.
-- `/system` updates persist immediately for active conversations and show details in confirmations.
-- Message styling fixes for list indentation and responsive images.
-
-## v0.3 Requirements (Planned)
-
+## Roadmap (v0.3 deferred)
 - Conversation search.
-- Authentication / API key management UI.
+- Authentication and API key management UI.
 - Multi-user support.
 - Usage analytics dashboard (graphs, trends).
 - Export conversations (JSON/Markdown/PDF).
-- Prompt templates/library.
+- Prompt templates or library.
 - Dark mode toggle.
-- Vision/image upload support.
+- Vision or image upload support.
 - PWA support.
 - Advanced deployment stack (reverse proxy, HTTPS automation).
 
-## API Endpoints (Current)
-
-- `POST /api/chat/stream` (SSE streaming)
-- `POST /api/chat/submit` (background completion)
-- `GET /api/conversations`
-- `GET /api/conversations/{id}`
-- `POST /api/conversations`
-- `DELETE /api/conversations/{id}`
-- `POST /api/conversations/{id}/clone`
-- `GET /api/usage/summary?scope=overall|device`
-- `GET /api/usage/models`
-- `POST /api/images/generate`
-
-## Notes
-
-- No auth in v0.2/v0.3; rely on network isolation.
-- Single container per environment; SQLite persists at `./data/llm-router.db`.
+## References
+- Developer workflow and commands: `AGENTS.md`.
+- Setup and usage overview: `README.md`.
