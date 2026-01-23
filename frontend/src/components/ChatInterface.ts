@@ -541,11 +541,18 @@ function handleCommand(input: string): boolean {
       store.setSystemUpdating(true);
       void api
         .appendSystemText(conversationId, systemText)
-        .then(() => {
+        .then((response) => {
           addSystemMessage(
-            buildSystemConfirmation(systemText, true, store.getState().selectedModel, {
-              title: store.getState().currentConversation?.title || 'this conversation',
-            })
+            buildSystemConfirmation(
+              systemText,
+              true,
+              response.model || store.getState().selectedModel,
+              response.provider,
+              response.system_prompt_length,
+              {
+                title: store.getState().currentConversation?.title || 'this conversation',
+              }
+            )
           );
         })
         .catch((error) => {
@@ -558,9 +565,16 @@ function handleCommand(input: string): boolean {
     }
     store.appendSystemText(systemText);
     addSystemMessage(
-      buildSystemConfirmation(systemText, false, store.getState().selectedModel, {
-        title: 'next message',
-      })
+      buildSystemConfirmation(
+        systemText,
+        false,
+        store.getState().selectedModel,
+        null,
+        null,
+        {
+          title: 'next message',
+        }
+      )
     );
     store.setError(null);
     return true;
@@ -586,17 +600,26 @@ function buildSystemConfirmation(
   text: string,
   persisted: boolean,
   modelId: string,
+  provider: string | null,
+  totalLength: number | null,
   scope: { title: string }
 ): string {
   const header = persisted
     ? `System text appended for ${scope.title}:`
     : `System text queued for ${scope.title}:`;
+  const providerLabel = provider ? `${provider.charAt(0).toUpperCase()}${provider.slice(1)}` : null;
   const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
   const quoted = preview
     .split('\n')
     .map((line) => `> ${line}`)
     .join('\n');
-  return `${header}\n\n- Model: **${modelId}**\n- Length: **${text.length} chars**\n\n${quoted}`;
+  const detailLines = [
+    `- Model: **${modelId}**`,
+    providerLabel ? `- Provider: **${providerLabel}**` : null,
+    `- Added: **${text.length} chars**`,
+    totalLength ? `- Total: **${totalLength} chars**` : null,
+  ].filter(Boolean);
+  return `${header}\n\n${detailLines.join('\n')}\n\n${quoted}`;
 }
 
 function findModel(query: string): ModelInfo | null {

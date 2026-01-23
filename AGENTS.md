@@ -27,6 +27,13 @@ YYYY-MM-DD HH:MM - Short summary
 - Notes: relevant context for handoff
 ```
 
+## Permissions & Approvals (Codex/Sandbox)
+
+- Escalated permissions are typically required for commands that write to `~/.cache` or need network access, including `uv sync`, `uv run ruff check .`, `uv run pytest`, `uvx ty check`, and `npm install`.
+- Playwright UX scripts (`node scripts/ux-*.js`) may download browsers to `~/.cache/ms-playwright` and write screenshots to `docs/screenshots/`.
+- API/image smoke scripts (`node scripts/api-smoke.js`, `node scripts/image-smoke.js`) require network access and valid `.env` API keys.
+- Some git commands may need access to `~/.gitconfig` when running inside a sandboxed shell.
+
 ## Project Philosophy & Preferences
 
 This project follows specific design principles and tooling preferences:

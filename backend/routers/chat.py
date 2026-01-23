@@ -95,7 +95,9 @@ async def stream_chat(
 
             # Get token counts and calculate cost
             metadata_messages = message_history
-            if request.reasoning:
+            if request.reasoning and not (
+                provider == "openai" and llm_client.uses_responses_api(request.model)
+            ):
                 metadata_messages = [
                     {"role": "system", "content": f"Reasoning level: {request.reasoning}."},
                     *message_history,
@@ -275,7 +277,7 @@ async def run_background_completion(
                 assistant_content += token
 
             metadata_messages = message_history
-            if reasoning:
+            if reasoning and not (provider == "openai" and llm_client.uses_responses_api(model)):
                 metadata_messages = [
                     {"role": "system", "content": f"Reasoning level: {reasoning}."},
                     *message_history,

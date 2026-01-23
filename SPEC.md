@@ -59,7 +59,8 @@ Optional:
 
 ## Testing Status
 - Smoke scripts live in `scripts/` (api, image, ux).
-- Unit and integration tests are still pending.
+- Backend unit tests cover provider resolution and system prompt append helpers.
+- Integration and frontend unit tests are still pending.
 
 ## Roadmap (v0.3 deferred)
 - Conversation search.

@@ -35,6 +35,15 @@ export interface ConversationListItem {
   system_prompt?: string | null;
 }
 
+export interface SystemPromptUpdateResponse {
+  status: string;
+  conversation_id: string;
+  model: string;
+  provider: string;
+  system_prompt: string;
+  system_prompt_length: number;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;

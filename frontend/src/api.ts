@@ -6,6 +6,7 @@ import type {
   Conversation,
   ConversationListItem,
   ModelCatalog,
+  SystemPromptUpdateResponse,
   UsageSummary,
   VersionInfo,
 } from './types';
@@ -195,8 +196,11 @@ export async function cloneConversation(id: string): Promise<Conversation> {
   });
 }
 
-export async function appendSystemText(id: string, systemText: string): Promise<void> {
-  await fetchJSON(`${API_BASE}/conversations/${id}/system`, {
+export async function appendSystemText(
+  id: string,
+  systemText: string
+): Promise<SystemPromptUpdateResponse> {
+  return fetchJSON<SystemPromptUpdateResponse>(`${API_BASE}/conversations/${id}/system`, {
     method: 'POST',
     body: JSON.stringify({ system_text: systemText }),
   });
