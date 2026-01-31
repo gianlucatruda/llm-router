@@ -219,12 +219,30 @@ llm-router/
 ```bash
 # Backend
 cd backend
-pytest
+uv sync
+uv run ruff format .
+uv run ruff check .
+uvx ty check
+uv run pytest
 
 # Frontend
 cd frontend
-npm test
+npm install
+npm run build
+
+# Smoke/UX (from repo root)
+npm install
+node scripts/api-smoke.js
+node scripts/image-smoke.js
+node scripts/ux-smoke.js
+node scripts/ux-extended.js
+node scripts/ux-matrix.js
+node scripts/ux-manual.js
 ```
+
+Note: Smoke/UX scripts expect the dev servers to be running and require valid API keys
+in `.env`. In sandboxed environments, `uv`/`npm` commands and Playwright browser installs
+may need explicit permission to access network and `~/.cache`.
 
 ### Building Docker Image
 

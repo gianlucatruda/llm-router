@@ -253,7 +253,7 @@ function render(app: HTMLElement): void {
   // Update input state
   const inputArea = app.querySelector('.input-area') as any;
   if (inputArea && inputArea.setDisabled) {
-    inputArea.setDisabled(state.isStreaming);
+    inputArea.setDisabled(state.isStreaming || state.systemUpdating);
   }
 }
 
@@ -538,18 +538,44 @@ function handleCommand(input: string): boolean {
     const conversationId = store.getState().currentConversation?.id || null;
     if (conversationId) {
       store.setError(null);
+      store.setSystemUpdating(true);
       void api
         .appendSystemText(conversationId, systemText)
-        .then(() => {
-          addSystemMessage(buildSystemConfirmation(systemText, true));
+        .then((response) => {
+          addSystemMessage(
+            buildSystemConfirmation(
+              systemText,
+              true,
+              response.model || store.getState().selectedModel,
+              response.provider,
+              response.system_prompt_length,
+              {
+                title: store.getState().currentConversation?.title || 'this conversation',
+              }
+            )
+          );
         })
         .catch((error) => {
           store.setError(error instanceof Error ? error.message : 'Failed to update system text.');
+        })
+        .finally(() => {
+          store.setSystemUpdating(false);
         });
       return true;
     }
     store.appendSystemText(systemText);
-    addSystemMessage(buildSystemConfirmation(systemText, false));
+    addSystemMessage(
+      buildSystemConfirmation(
+        systemText,
+        false,
+        store.getState().selectedModel,
+        null,
+        null,
+        {
+          title: 'next message',
+        }
+      )
+    );
     store.setError(null);
     return true;
   }
@@ -570,16 +596,30 @@ function addSystemMessage(content: string): void {
   store.addMessage(systemMessage);
 }
 
-function buildSystemConfirmation(text: string, persisted: boolean): string {
+function buildSystemConfirmation(
+  text: string,
+  persisted: boolean,
+  modelId: string,
+  provider: string | null,
+  totalLength: number | null,
+  scope: { title: string }
+): string {
   const header = persisted
-    ? 'System text appended for this conversation:'
-    : 'System text queued for the next message:';
+    ? `System text appended for ${scope.title}:`
+    : `System text queued for ${scope.title}:`;
+  const providerLabel = provider ? `${provider.charAt(0).toUpperCase()}${provider.slice(1)}` : null;
   const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
   const quoted = preview
     .split('\n')
     .map((line) => `> ${line}`)
     .join('\n');
-  return `${header}\n\n${quoted}`;
+  const detailLines = [
+    `- Model: **${modelId}**`,
+    providerLabel ? `- Provider: **${providerLabel}**` : null,
+    `- Added: **${text.length} chars**`,
+    totalLength ? `- Total: **${totalLength} chars**` : null,
+  ].filter(Boolean);
+  return `${header}\n\n${detailLines.join('\n')}\n\n${quoted}`;
 }
 
 function findModel(query: string): ModelInfo | null {

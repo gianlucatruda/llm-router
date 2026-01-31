@@ -6,12 +6,14 @@ import type {
   Conversation,
   ConversationListItem,
   ModelCatalog,
+  SystemPromptUpdateResponse,
   UsageSummary,
   VersionInfo,
 } from './types';
 
 const API_BASE = '/api';
 const DEVICE_KEY = 'llm-router-device-id';
+let volatileDeviceId: string | null = null;
 
 function getDeviceId(): string {
   try {
@@ -23,7 +25,10 @@ function getDeviceId(): string {
     localStorage.setItem(DEVICE_KEY, generated);
     return generated;
   } catch (error) {
-    return 'unknown-device';
+    if (!volatileDeviceId) {
+      volatileDeviceId = crypto.randomUUID();
+    }
+    return volatileDeviceId;
   }
 }
 
@@ -191,8 +196,11 @@ export async function cloneConversation(id: string): Promise<Conversation> {
   });
 }
 
-export async function appendSystemText(id: string, systemText: string): Promise<void> {
-  await fetchJSON(`${API_BASE}/conversations/${id}/system`, {
+export async function appendSystemText(
+  id: string,
+  systemText: string
+): Promise<SystemPromptUpdateResponse> {
+  return fetchJSON<SystemPromptUpdateResponse>(`${API_BASE}/conversations/${id}/system`, {
     method: 'POST',
     body: JSON.stringify({ system_text: systemText }),
   });

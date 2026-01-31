@@ -19,15 +19,42 @@ renderer.code = function(code: string, language: string | undefined) {
 
 marked.setOptions({ renderer });
 
+const AUTO_SCROLL_THRESHOLD = 80;
+
 export function createMessageList(): HTMLElement {
+  const shell = document.createElement('div');
+  shell.className = 'messages-shell';
+
   const container = document.createElement('div');
   container.className = 'messages-container';
   container.id = 'messages';
+  container.dataset.autoscroll = 'true';
 
-  return container;
+  const jumpButton = document.createElement('button');
+  jumpButton.type = 'button';
+  jumpButton.className = 'jump-latest';
+  jumpButton.textContent = 'Jump to latest';
+  jumpButton.addEventListener('click', () => {
+    scrollToBottom(container);
+    setAutoScroll(container, true, jumpButton);
+  });
+
+  container.addEventListener('scroll', () => {
+    setAutoScroll(container, isNearBottom(container), jumpButton);
+  });
+
+  shell.appendChild(container);
+  shell.appendChild(jumpButton);
+
+  setAutoScroll(container, true, jumpButton);
+  return shell;
 }
 
 export function renderMessages(container: HTMLElement, messages: Message[]): void {
+  const shouldScroll = shouldAutoScroll(container);
+  const previousScrollTop = container.scrollTop;
+  const previousScrollHeight = container.scrollHeight;
+  const jumpButton = getJumpButton(container);
   container.innerHTML = '';
 
   if (messages.length === 0) {
@@ -35,6 +62,12 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
     empty.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
     empty.textContent = 'Type /help for commands';
     container.appendChild(empty);
+    if (shouldScroll) {
+      scrollToBottom(container);
+      setAutoScroll(container, true, jumpButton);
+    } else {
+      setAutoScroll(container, false, jumpButton);
+    }
     return;
   }
 
@@ -100,15 +133,24 @@ export function renderMessages(container: HTMLElement, messages: Message[]): voi
     container.appendChild(messageEl);
   });
 
-  // Scroll to bottom
-  container.scrollTop = container.scrollHeight;
+  if (shouldScroll) {
+    scrollToBottom(container);
+    setAutoScroll(container, true, jumpButton);
+  } else {
+    const delta = container.scrollHeight - previousScrollHeight;
+    container.scrollTop = previousScrollTop + delta;
+    setAutoScroll(container, false, jumpButton);
+  }
 }
 
 export function appendToken(container: HTMLElement, token: string): void {
   const lastMessage = container.querySelector('.message:last-child .message-content');
   if (lastMessage) {
     lastMessage.textContent += token;
-    container.scrollTop = container.scrollHeight;
+    if (shouldAutoScroll(container)) {
+      scrollToBottom(container);
+      setAutoScroll(container, true, getJumpButton(container));
+    }
   }
 }
 
@@ -151,7 +193,10 @@ export function renderStreamingMessage(
     metaEl.textContent = meta;
   }
 
-  container.scrollTop = container.scrollHeight;
+  if (shouldAutoScroll(container)) {
+    scrollToBottom(container);
+    setAutoScroll(container, true, getJumpButton(container));
+  }
 }
 
 function formatMeta(message: Message): string {
@@ -177,4 +222,31 @@ function formatMeta(message: Message): string {
     return 'No metadata';
   }
   return parts.join(' • ');
+}
+
+function isNearBottom(container: HTMLElement): boolean {
+  return container.scrollHeight - container.scrollTop - container.clientHeight <= AUTO_SCROLL_THRESHOLD;
+}
+
+function shouldAutoScroll(container: HTMLElement): boolean {
+  return container.dataset.autoscroll !== 'false';
+}
+
+function setAutoScroll(
+  container: HTMLElement,
+  enabled: boolean,
+  button?: HTMLElement | null
+): void {
+  container.dataset.autoscroll = enabled ? 'true' : 'false';
+  if (button) {
+    button.classList.toggle('visible', !enabled);
+  }
+}
+
+function scrollToBottom(container: HTMLElement): void {
+  container.scrollTop = container.scrollHeight;
+}
+
+function getJumpButton(container: HTMLElement): HTMLElement | null {
+  return container.parentElement?.querySelector('.jump-latest') as HTMLElement | null;
 }
