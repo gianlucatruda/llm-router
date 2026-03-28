@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { assistantEntryCount, waitForAssistantDone, waitForModelReady } = require('./ux-helpers');
 
 const BASE_URL = process.env.UX_BASE_URL || 'http://127.0.0.1:5173/';
 const SCREEN_DIR = path.resolve(__dirname, '..', 'docs', 'screenshots');
@@ -14,28 +15,6 @@ function screenshotPath(label) {
   return path.join(SCREEN_DIR, `${TS}-${label}.png`);
 }
 
-async function waitForModelReady(page) {
-  await page.waitForFunction(() => {
-    const meta = document.querySelector('.model-meta');
-    return meta && (meta.textContent || '').trim().length > 0;
-  }, { timeout: 10000 });
-}
-
-async function waitForAssistantDone(page) {
-  await page.waitForFunction(() => {
-    const metas = Array.from(document.querySelectorAll('.message.assistant .message-meta'));
-    if (metas.length === 0) return false;
-    return metas.every((el) => {
-      const text = (el.textContent || '').toLowerCase();
-      return !text.includes('pending') && !text.includes('streaming');
-    });
-  }, { timeout: 20000 });
-  await page.waitForFunction(() => {
-    const content = document.querySelector('.message.assistant:last-child .message-content');
-    return content && (content.textContent || '').trim().length > 0;
-  }, { timeout: 20000 });
-}
-
 async function run() {
   ensureDir();
   const browser = await chromium.launch({ headless: true });
@@ -44,76 +23,75 @@ async function run() {
   const log = (msg) => console.log(`[ux-smoke] ${msg}`);
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.header');
+  await page.waitForSelector('.topbar');
   await waitForModelReady(page);
-  const versionLabel = await page.$eval('.title-version', (el) => (el.textContent || '').trim());
+  const versionLabel = await page.$eval('.brand-version', (el) => (el.textContent || '').trim());
   log(`version label: ${versionLabel || 'missing'}`);
   await page.screenshot({ path: screenshotPath('mobile-home') });
   log('loaded mobile view');
 
-  await page.fill('.message-input', '/help');
+  await page.fill('.composer-input', '/help');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   log('sent /help');
 
-  await page.fill('.message-input', '/model gpt-5.1');
+  await page.fill('.composer-input', '/model gpt-5.1');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   log('switched model');
 
-  await page.fill('.message-input', '/temp 0.3');
+  await page.fill('.composer-input', '/temp 0.3');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   log('set temperature');
 
-  await page.fill('.message-input', '/reasoning low');
+  await page.fill('.composer-input', '/reasoning low');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   log('set reasoning');
 
-  await page.click('.menu-button');
-  await page.waitForSelector('.panel-overlay.visible');
+  await page.click('.session-toggle');
+  await page.waitForFunction(() => document.getElementById('app')?.dataset.drawerOpen === 'true');
   await page.screenshot({ path: screenshotPath('mobile-sessions') });
   log('sessions panel opened');
 
-  await page.click('.panel-close');
+  await page.click('.drawer-close');
   log('sessions panel closed');
 
-  await page.fill('.message-input', 'Write a short haiku about circuit boards.');
+  await page.fill('.composer-input', 'Write a short haiku about circuit boards.');
   await page.keyboard.press('Enter');
   log('sent haiku message');
 
-  await waitForAssistantDone(page);
-  const assistantContent = await page.$eval('.message.assistant .message-content', (el) => el.textContent || '');
+  await waitForAssistantDone(page, 1);
+  const assistantContent = await page.$eval('.app-probe', (el) => el.textContent || '');
   log(`assistant content length: ${assistantContent.trim().length}`);
 
-  await page.fill('.message-input', 'Return a JavaScript function that sums an array.');
+  await page.fill('.composer-input', 'Return a JavaScript function that sums an array.');
   await page.keyboard.press('Enter');
   log('sent code request');
-  await waitForAssistantDone(page);
+  await waitForAssistantDone(page, 2);
 
-  const codeBlocks = await page.$$eval('pre code', (items) => items.length);
-  log(`code blocks found: ${codeBlocks}`);
+  const codeFences = await page.$eval('.app-probe', (el) => ((el.textContent || '').match(/```/g) || []).length);
+  log(`code fences found: ${codeFences}`);
 
-  await page.click('.menu-button');
-  await page.waitForSelector('.panel-overlay.visible');
+  await page.click('.session-toggle');
   await page.waitForFunction(() => {
-    const items = document.querySelectorAll('.conversation-item');
+    const items = document.querySelectorAll('.session-item');
     return items.length > 0;
-  }, { timeout: 10000 });
-  const items = await page.$$eval('.conversation-item', (els) => els.length);
+  }, null, { timeout: 10000 });
+  const items = await page.$$eval('.session-item', (els) => els.length);
   log(`conversation items: ${items}`);
 
   if (items > 0) {
-    await page.click('.conversation-item');
+    await page.click('.session-main');
     await page.waitForTimeout(600);
     log('selected conversation');
   }
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.messages-container');
-  await waitForAssistantDone(page);
-  const afterReload = await page.$$eval('.message', (els) => els.length);
+  await page.waitForSelector('.terminal-output');
+  await waitForAssistantDone(page, 2);
+  const afterReload = await assistantEntryCount(page);
   log(`messages after reload: ${afterReload}`);
 
   await page.setViewportSize({ width: 834, height: 1112 });

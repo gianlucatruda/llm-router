@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { assistantEntryCount, waitForAssistantDone, waitForModelReady } = require('./ux-helpers');
 
 const BASE_URL = process.env.UX_BASE_URL || 'http://127.0.0.1:5173/';
 const SCREEN_DIR = path.resolve(__dirname, '..', 'docs', 'screenshots');
@@ -14,28 +15,6 @@ function screenshotPath(label) {
   return path.join(SCREEN_DIR, `${TS}-${label}.png`);
 }
 
-async function waitForModelReady(page) {
-  await page.waitForFunction(() => {
-    const meta = document.querySelector('.model-meta');
-    return meta && (meta.textContent || '').trim().length > 0;
-  }, { timeout: 10000 });
-}
-
-async function waitForAssistant(page) {
-  await page.waitForFunction(() => {
-    const pending = Array.from(document.querySelectorAll('.message.assistant .message-meta'))
-      .some((el) => {
-        const text = (el.textContent || '').toLowerCase();
-        return text.includes('pending') || text.includes('streaming');
-      });
-    return !pending;
-  }, { timeout: 20000 });
-  await page.waitForFunction(() => {
-    const content = document.querySelector('.message.assistant:last-child .message-content');
-    return content && (content.textContent || '').trim().length > 0;
-  }, { timeout: 20000 });
-}
-
 async function run() {
   ensureDir();
   const browser = await chromium.launch({ headless: true });
@@ -43,75 +22,83 @@ async function run() {
   const log = (msg) => console.log(`[ux-manual] ${msg}`);
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.header');
+  await page.waitForSelector('.topbar');
   await waitForModelReady(page);
   await page.screenshot({ path: screenshotPath('start') });
 
   // Slash command suggestions
-  await page.fill('.message-input', '/model');
+  await page.fill('.composer-input', '/model');
   await page.waitForTimeout(300);
-  const suggestionVisible = await page.$eval('.command-suggestions', (el) => getComputedStyle(el).display !== 'none');
+  const suggestionVisible = await page.$eval('.suggestion-list', (el) => !el.hidden);
   log(`suggestions visible: ${suggestionVisible}`);
   await page.keyboard.press('Enter');
 
   // Model gpt-5.1 + reasoning + temp
-  await page.fill('.message-input', '/model gpt-5.1');
+  await page.fill('.composer-input', '/model gpt-5.1');
   await page.keyboard.press('Enter');
-  await page.fill('.message-input', '/reasoning low');
+  await page.fill('.composer-input', '/reasoning low');
   await page.keyboard.press('Enter');
-  await page.fill('.message-input', '/temp 0.4');
+  await page.fill('.composer-input', '/temp 0.4');
   await page.keyboard.press('Enter');
 
-  await page.fill('.message-input', 'Say hello in one sentence.');
+  let assistantCount = 1;
+  await page.fill('.composer-input', 'Say hello in one sentence.');
   await page.keyboard.press('Enter');
-  await waitForAssistant(page);
+  await waitForAssistantDone(page, assistantCount);
 
   await page.screenshot({ path: screenshotPath('after-gpt-5-1') });
 
   // Switch to gpt-4o (no reasoning)
-  await page.fill('.message-input', '/model gpt-4o');
+  await page.fill('.composer-input', '/model gpt-4o');
   await page.keyboard.press('Enter');
-  await page.fill('.message-input', '/reasoning low');
+  await page.fill('.composer-input', '/reasoning low');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
-  const errorText = await page.$eval('.error-banner span', (el) => el.textContent || '');
+  const errorText = await page.$eval('.error-strip', (el) => el.textContent || '');
   log(`reasoning error: ${errorText.trim()}`);
-  await page.fill('.message-input', '/temp 0.7');
+  await page.fill('.composer-input', '/temp 0.7');
   await page.keyboard.press('Enter');
 
-  await page.fill('.message-input', 'Return a fenced code block with a JS sum function.');
+  assistantCount += 1;
+  await page.fill('.composer-input', 'Return a fenced code block with a JS sum function.');
   await page.keyboard.press('Enter');
-  await waitForAssistant(page);
+  await waitForAssistantDone(page, assistantCount);
 
-  const metaText = await page.$eval('.message.assistant:last-child .message-meta', (el) => el.textContent || '');
-  log(`assistant meta: ${metaText.trim()}`);
+  const metaText = await page.$eval('.app-probe', (el) => {
+    const lines = (el.textContent || '').trim().split('\n').slice(-6);
+    return lines.join(' | ');
+  });
+  log(`assistant tail: ${metaText.trim()}`);
 
   await page.screenshot({ path: screenshotPath('after-gpt-4o') });
 
   // Ensure input remains enabled
-  const inputDisabled = await page.$eval('.message-input', (el) => (el).disabled);
+  const inputDisabled = await page.$eval('.composer-input', (el) => el.disabled);
   log(`input disabled: ${inputDisabled}`);
 
   // Long conversation + model switch back
   for (let i = 0; i < 3; i += 1) {
-    await page.fill('.message-input', `Quick reply ${i + 1}`);
+    assistantCount += 1;
+    await page.fill('.composer-input', `Quick reply ${i + 1}`);
     await page.keyboard.press('Enter');
-    await waitForAssistant(page);
+    await waitForAssistantDone(page, assistantCount);
   }
 
-  await page.fill('.message-input', '/model gpt-5.1');
+  await page.fill('.composer-input', '/model gpt-5.1');
   await page.keyboard.press('Enter');
-  await page.fill('.message-input', 'Another response after model switch.');
+  assistantCount += 1;
+  await page.fill('.composer-input', 'Another response after model switch.');
   await page.keyboard.press('Enter');
-  await waitForAssistant(page);
+  await waitForAssistantDone(page, assistantCount);
 
   await page.screenshot({ path: screenshotPath('after-long-thread') });
 
   // Reload and verify metadata persists
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.messages-container');
-  const persistedMeta = await page.$$eval('.message.assistant .message-meta', (nodes) => nodes.map((n) => n.textContent || ''));
-  log(`persisted meta count: ${persistedMeta.length}`);
+  await page.waitForSelector('.terminal-output');
+  await waitForModelReady(page);
+  const persistedMeta = await assistantEntryCount(page);
+  log(`persisted meta count: ${persistedMeta}`);
   await page.screenshot({ path: screenshotPath('after-reload') });
 
   await browser.close();

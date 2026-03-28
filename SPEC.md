@@ -1,18 +1,19 @@
 # LLM Router - Product Spec
 
 ## Summary
-- Self-hosted, single-user LLM router with a retro terminal UI.
+- Self-hosted, single-user LLM router with an xterm.js browser terminal UI.
 - Mobile-first web app that routes prompts through personal API keys.
 - Single container deployment: FastAPI backend, SQLite database, static frontend.
 
 ## Decisions (v0.2 locked)
 - Single container deployment with FastAPI + SQLite.
-- Vanilla TypeScript + Vite frontend, no frameworks.
+- Vanilla TypeScript + Vite frontend with xterm.js, no frameworks.
 - No auth in v0.2; rely on network isolation.
 - Minimal dependencies and explicit, readable code.
 
 ## Current Scope (v0.2 implemented)
 - Chat: SSE streaming and non-streaming submit.
+- Browser CLI: full-screen xterm.js terminal with slash commands, transcript scrollback, session drawer, and command autocomplete.
 - Conversations: list, fetch, create, delete, clone.
 - System prompts: append per conversation.
 - Usage tracking: per-model totals with overall or device scope.
@@ -23,7 +24,7 @@
 
 ## Architecture Summary
 - Backend: FastAPI async + SQLAlchemy async (aiosqlite), SSE for streaming.
-- Frontend: vanilla TypeScript components with lightweight store, Vite build.
+- Frontend: vanilla TypeScript + xterm.js terminal client, Vite build.
 - Deployment: single Docker image, Docker Compose for local or homelab.
 
 ## Data Model
@@ -60,6 +61,7 @@ Optional:
 ## Testing Status
 - Smoke scripts live in `scripts/` (api, image, ux).
 - Backend unit tests cover provider resolution and system prompt append helpers.
+- Playwright UX scripts cover the browser terminal shell, session drawer, model matrix, and manual browser flow.
 - Integration and frontend unit tests are still pending.
 
 ## Roadmap (v0.3 deferred)
