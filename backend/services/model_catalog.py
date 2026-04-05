@@ -99,7 +99,7 @@ def _infer_capabilities(provider: str, model_id: str) -> dict[str, Any]:
             return {
                 "supports_reasoning": True,
                 "reasoning_levels": ["low", "medium", "high"],
-                "supports_temperature": True,
+                "supports_temperature": False,
             }
     return {
         "supports_reasoning": False,

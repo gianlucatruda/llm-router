@@ -1,9 +1,6 @@
-/**
- * Main entry point for LLM Router frontend
- */
-
+import '@xterm/xterm/css/xterm.css';
 import './styles/main.css';
-import { createChatInterface } from './components/ChatInterface';
+import { mountBrowserTerminal } from './components/BrowserTerminal';
 
 async function init() {
   const appContainer = document.getElementById('app');
@@ -13,13 +10,12 @@ async function init() {
   }
 
   try {
-    const chatInterface = await createChatInterface();
-    appContainer.replaceWith(chatInterface);
+    await mountBrowserTerminal(appContainer);
   } catch (error) {
     console.error('Failed to initialize app:', error);
     appContainer.innerHTML = `
-      <div style="padding: 20px; text-align: center; color: #da3633;">
-        <h2>Failed to initialize application</h2>
+      <div style="padding: 20px; text-align: center; color: #ff8b7d;">
+        <h2>Failed to initialize terminal</h2>
         <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
       </div>
     `;

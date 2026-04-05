@@ -33,6 +33,7 @@ ENV APP_GIT_REF=${GIT_REF:-${SOURCE_REF:-dev}}
 # Install dependencies with uv
 RUN pip install --no-cache-dir uv
 COPY backend/pyproject.toml backend/uv.lock ./
+ENV UV_NO_DEV=1
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy backend code

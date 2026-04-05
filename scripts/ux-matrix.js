@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const { waitForAssistantDone, waitForModelReady } = require('./ux-helpers');
 
 const BASE_URL = process.env.UX_BASE_URL || 'http://127.0.0.1:5173/';
 
@@ -21,35 +22,13 @@ async function getAvailableAnthropicModel() {
   }
 }
 
-async function waitForModelReady(page) {
-  await page.waitForFunction(() => {
-    const meta = document.querySelector('.model-meta');
-    return meta && (meta.textContent || '').trim().length > 0;
-  }, { timeout: 10000 });
-}
-
-async function waitForAssistantDone(page) {
-  await page.waitForFunction(() => {
-    const metas = Array.from(document.querySelectorAll('.message.assistant .message-meta'));
-    if (metas.length === 0) return false;
-    return metas.every((el) => {
-      const text = (el.textContent || '').toLowerCase();
-      return !text.includes('pending') && !text.includes('streaming');
-    });
-  }, { timeout: 20000 });
-  await page.waitForFunction(() => {
-    const content = document.querySelector('.message.assistant:last-child .message-content');
-    return content && (content.textContent || '').trim().length > 0;
-  }, { timeout: 20000 });
-}
-
 async function run() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const log = (msg) => console.log(`[ux-matrix] ${msg}`);
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.header');
+  await page.waitForSelector('.topbar');
   await waitForModelReady(page);
 
   const anthroModel = await getAvailableAnthropicModel();
@@ -60,20 +39,22 @@ async function run() {
       : []),
   ];
 
+  let assistantCount = 0;
+
   for (const test of cases) {
     log(`case: ${test.model}`);
-    await page.fill('.message-input', `/model ${test.model}`);
+    await page.fill('.composer-input', `/model ${test.model}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
-    const selectedLabel = await page.$eval('.model-header .control-link', (el) => el.textContent || '');
+    const selectedLabel = await page.$eval('.status-model', (el) => el.textContent || '');
     log(`selected model: ${selectedLabel.trim()}`);
 
-    await page.fill('.message-input', `/reasoning ${test.reasoning}`);
+    await page.fill('.composer-input', `/reasoning ${test.reasoning}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
-    const errorState = await page.$eval('.error-banner', (el) => ({
-      visible: getComputedStyle(el).display !== 'none',
-      text: (el.querySelector('span')?.textContent || '').trim(),
+    const errorState = await page.$eval('.error-strip', (el) => ({
+      visible: !el.hidden,
+      text: (el.textContent || '').trim(),
     }));
     if (test.expectReasoning && errorState.visible) {
       log(`unexpected reasoning error: ${errorState.text}`);
@@ -82,16 +63,21 @@ async function run() {
       log('expected reasoning error but none shown');
     }
 
-    await page.fill('.message-input', `/temp ${test.temp}`);
+    await page.fill('.composer-input', `/temp ${test.temp}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
 
-    await page.fill('.message-input', `Quick check for ${test.model}.`);
+    assistantCount += 1;
+    await page.fill('.composer-input', `Quick check for ${test.model}.`);
     await page.keyboard.press('Enter');
-    await waitForAssistantDone(page);
+    await waitForAssistantDone(page, assistantCount);
 
-    const meta = await page.$eval('.message.assistant:last-child .message-meta', (el) => el.textContent || '');
-    log(`meta: ${meta.trim()}`);
+    const meta = await page.$eval('.app-probe', (el) => {
+      const text = el.textContent || '';
+      const lines = text.trim().split('\n').slice(-6);
+      return lines.join(' | ');
+    });
+    log(`tail: ${meta.trim()}`);
   }
 
   await browser.close();

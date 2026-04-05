@@ -4,7 +4,15 @@
 
 import type { ModelInfo } from './types';
 
-export type CommandId = 'help' | 'model' | 'temp' | 'reasoning' | 'system' | 'image';
+export type CommandId =
+  | 'help'
+  | 'model'
+  | 'temp'
+  | 'reasoning'
+  | 'system'
+  | 'image'
+  | 'new'
+  | 'sessions';
 
 export interface CommandDefinition {
   id: CommandId;
@@ -48,19 +56,32 @@ export const COMMANDS: CommandDefinition[] = [
     usage: '/image <prompt> [model=...] [size=...]',
     description: 'Generate an image (OpenAI only)',
   },
+  {
+    id: 'new',
+    usage: '/new',
+    description: 'Start a fresh draft session',
+  },
+  {
+    id: 'sessions',
+    usage: '/sessions',
+    description: 'Toggle the saved session drawer',
+  },
 ];
 
+const COMMAND_IDS = new Set<CommandId>(COMMANDS.map((command) => command.id));
+
 export function getCommandHelp(): string {
-  const lines = COMMANDS.map((cmd) => `- \`${cmd.usage}\` — ${cmd.description}`);
+  const lines = COMMANDS.map((cmd) => `${cmd.usage} - ${cmd.description}`);
   return [
-    '**Commands**',
+    'Commands',
     ...lines,
     '',
-    '**Tips**',
-    '- Use `/model` with autocomplete to pick quickly.',
-    '- `/reasoning` depends on model capabilities.',
-    '- `/image` defaults to DALL·E 3, size 1024x1024.',
-    '- Press `Shift+Enter` for a newline.',
+    'Tips',
+    '- Use /model with Tab autocomplete to switch quickly.',
+    '- /reasoning depends on model capabilities.',
+    '- /image defaults to dall-e-3 at 1024x1024.',
+    '- /new clears the draft and /sessions opens history.',
+    '- Shift+Enter inserts a newline.',
   ].join('\n');
 }
 
@@ -70,7 +91,7 @@ export function parseCommand(input: string): { id: CommandId; arg: string } | nu
   }
   const [rawCommand, ...rest] = input.trim().split(/\s+/);
   const command = rawCommand.slice(1).toLowerCase();
-  if (!['help', 'model', 'temp', 'reasoning', 'system', 'image'].includes(command)) {
+  if (!COMMAND_IDS.has(command as CommandId)) {
     return null;
   }
   return {
@@ -93,6 +114,11 @@ export function getCommandSuggestions(
 
   if (!command || rawCommand === '/') {
     return COMMANDS.map((cmd) => ({ value: `/${cmd.id}`, label: cmd.usage }));
+  }
+
+  if (command === 'new' || command === 'sessions') {
+    const matched = COMMANDS.find((item) => item.id === command);
+    return matched ? [{ value: `/${matched.id}`, label: matched.usage }] : [];
   }
 
   if (command === 'model') {

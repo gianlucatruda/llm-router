@@ -28,6 +28,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.3.5",
     "ruff>=0.14.13",
 ]
 
@@ -55,3 +56,6 @@ quote-style = "double"
 indent-style = "space"
 
 # Use ty for type checking via: uvx ty check
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

@@ -1,14 +1,14 @@
 # LLM Router
 
-A lightweight, self-hosted chat interface for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with a retro terminal-inspired, mobile-first UI.
+A lightweight, self-hosted browser terminal for routing queries through personal API keys. Built for privacy, simplicity, and full control over your LLM usage, with an xterm.js-powered CLI-style interface.
 
 ## Features
 
-- **Retro terminal-inspired, aesthetic UI** built mobile-first
+- **Xterm.js browser terminal** that feels like a hosted CLI session
 - **Multiple LLM providers** - OpenAI and Anthropic with dynamic model catalog
 - **Background processing** - Submit a request and return later to the result
 - **Realtime streaming when active** - Stream responses while the UI is open
-- **Slash commands** - `/model`, `/temp`, `/reasoning`, `/system`, `/image`, `/help`
+- **Slash commands** - `/model`, `/temp`, `/reasoning`, `/system`, `/image`, `/new`, `/sessions`, `/help`
 - **Conversation management** - Create, view, delete, and clone conversations
 - **Usage tracking** - Track token usage and costs per model (device + overall)
 - **Image generation** - `/image` for DALL-E and gpt-image
@@ -156,13 +156,15 @@ Models are fetched dynamically from OpenAI and Anthropic when available, with a 
 - `/reasoning <low|medium|high>` - Set reasoning level (only for supported models)
 - `/system <text>` - Append to the per-conversation system prompt
 - `/image <prompt> [model=...] [size=...]` - Generate an image (OpenAI only)
+- `/new` - Start a fresh draft session
+- `/sessions` - Toggle the saved session drawer
 
 ## Architecture
 
 ### Tech Stack
 
 - **Backend**: Python FastAPI with async SQLite
-- **Frontend**: Vanilla TypeScript + Vite
+- **Frontend**: Vanilla TypeScript + Vite + xterm.js
 - **Database**: SQLite (single file)
 - **Streaming**: Server-Sent Events (SSE)
 - **Container**: Single Docker image with frontend + backend
@@ -178,13 +180,13 @@ llm-router/
 │   ├── models.py     # Pydantic schemas
 │   ├── routers/      # API endpoints
 │   └── services/     # LLM client, usage tracking
-├── frontend/         # Vanilla TS frontend
+├── frontend/         # Vanilla TS + xterm.js frontend
 │   ├── src/
-│   │   ├── components/  # UI components
-│   │   ├── state/       # Reactive state
+│   │   ├── components/  # Browser terminal app
 │   │   ├── styles/      # CSS
 │   │   └── main.ts      # Entry point
 │   └── index.html
+├── scripts/          # API and Playwright smoke checks
 └── Dockerfile        # Single-container build
 ```
 
@@ -219,12 +221,30 @@ llm-router/
 ```bash
 # Backend
 cd backend
-pytest
+uv sync
+uv run ruff format .
+uv run ruff check .
+uvx ty check
+uv run pytest
 
 # Frontend
 cd frontend
-npm test
+npm install
+npm run build
+
+# Smoke/UX (from repo root)
+npm install
+node scripts/api-smoke.js
+node scripts/image-smoke.js
+node scripts/ux-smoke.js
+node scripts/ux-extended.js
+node scripts/ux-matrix.js
+node scripts/ux-manual.js
 ```
+
+Note: Smoke/UX scripts expect the dev servers to be running and require valid API keys
+in `.env`. In sandboxed environments, `uv`/`npm` commands and Playwright browser installs
+may need explicit permission to access network and `~/.cache`.
 
 ### Building Docker Image
 
@@ -246,7 +266,7 @@ docker run -p 8000:8000 --env-file .env llm-router
 - ✅ Slash commands and per-conversation system prompts
 - ✅ Image generation (/image)
 - ✅ Usage tracking (device + overall)
-- ✅ Retro terminal-inspired, mobile-first UI
+- ✅ Xterm.js browser terminal UI
 - ✅ Single-container deployment
 
 ### v0.3 (Planned)

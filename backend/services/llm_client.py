@@ -6,7 +6,7 @@ from typing import Any
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
-from config import settings
+from config import get_model_config, settings
 
 
 class LLMClient:
@@ -24,6 +24,7 @@ class LLMClient:
         messages: list[dict[str, str]],
         temperature: float | None = None,
         reasoning: str | None = None,
+        system_prompt: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         Stream chat completions from the specified provider.
@@ -36,29 +37,37 @@ class LLMClient:
         Yields:
             Token strings as they arrive
         """
+        temperature = self._normalize_temperature(model, temperature)
         if provider == "openai":
-            async for token in self._stream_openai(
-                model, self._apply_reasoning(messages, reasoning), temperature
-            ):
+            async for token in self._stream_openai(model, messages, temperature, reasoning):
                 yield token
         elif provider == "anthropic":
-            async for token in self._stream_anthropic(model, messages, temperature, reasoning):
+            async for token in self._stream_anthropic(
+                model, messages, temperature, reasoning, system_prompt
+            ):
                 yield token
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
     async def _stream_openai(
-        self, model: str, messages: list[dict[str, str]], temperature: float | None
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        temperature: float | None,
+        reasoning: str | None,
     ) -> AsyncGenerator[str, None]:
         """Stream completions from OpenAI API."""
         try:
             if _use_responses_api(model):
-                async for token in self._stream_openai_responses(model, messages, temperature):
+                async for token in self._stream_openai_responses(
+                    model, messages, temperature, reasoning
+                ):
                     yield token
             else:
+                payload_messages = self._apply_reasoning(messages, reasoning)
                 params: dict[str, Any] = {
                     "model": model,
-                    "messages": messages,
+                    "messages": payload_messages,
                     "stream": True,
                 }
                 if temperature is not None:
@@ -78,12 +87,15 @@ class LLMClient:
         messages: list[dict[str, str]],
         temperature: float | None,
         reasoning: str | None,
+        system_prompt: str | None,
     ) -> AsyncGenerator[str, None]:
         """Stream completions from Anthropic API."""
         try:
-            system_prompt = " ".join(
-                msg["content"] for msg in messages if msg.get("role") == "system"
-            ).strip()
+            resolved_system = (system_prompt or "").strip()
+            if not resolved_system:
+                resolved_system = "\n".join(
+                    msg["content"] for msg in messages if msg.get("role") == "system"
+                ).strip()
             filtered_messages = [
                 msg for msg in messages if msg.get("role") in {"user", "assistant"}
             ]
@@ -95,8 +107,8 @@ class LLMClient:
             if temperature is not None:
                 params["temperature"] = temperature
             system_bits = []
-            if system_prompt:
-                system_bits.append(system_prompt)
+            if resolved_system:
+                system_bits.append(resolved_system)
             if reasoning:
                 system_bits.append(f"Reasoning level: {reasoning}.")
             if system_bits:
@@ -122,8 +134,20 @@ class LLMClient:
             *messages,
         ]
 
+    def _normalize_temperature(self, model: str, temperature: float | None) -> float | None:
+        if temperature is None:
+            return None
+        config = get_model_config(model)
+        if not config.get("supports_temperature", True):
+            return None
+        return temperature
+
     async def _stream_openai_responses(
-        self, model: str, messages: list[dict[str, str]], temperature: float | None
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        temperature: float | None,
+        reasoning: str | None,
     ) -> AsyncGenerator[str, None]:
         input_items = [
             {"role": msg["role"], "content": msg["content"]}
@@ -137,6 +161,8 @@ class LLMClient:
         }
         if temperature is not None:
             params["temperature"] = temperature
+        if reasoning:
+            params["reasoning"] = {"effort": reasoning}
         stream = await self.openai_client.responses.create(**params)
         async for event in stream:
             if getattr(event, "type", "") == "response.output_text.delta":
@@ -185,6 +211,9 @@ class LLMClient:
             size=size,
         )
         return result.data[0].url
+
+    def uses_responses_api(self, model: str) -> bool:
+        return _use_responses_api(model)
 
 
 def _use_responses_api(model: str) -> bool:

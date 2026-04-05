@@ -7,12 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from config import get_provider
 from database import Conversation, Message, get_db
 from models import (
     ConversationListItem,
     ConversationResponse,
     CreateConversationRequest,
     SystemPromptUpdateRequest,
+    SystemPromptUpdateResponse,
 )
 from services.system_prompt import append_system_text
 
@@ -159,7 +161,7 @@ async def clone_conversation(
     return cloned
 
 
-@router.post("/{conversation_id}/system")
+@router.post("/{conversation_id}/system", response_model=SystemPromptUpdateResponse)
 async def append_system_prompt(
     conversation_id: str,
     request: SystemPromptUpdateRequest,
@@ -185,4 +187,17 @@ async def append_system_prompt(
     conversation.updated_at = int(datetime.now().timestamp())
     await db.flush()
 
-    return {"status": "updated"}
+    resolved_prompt = conversation.system_prompt or ""
+    try:
+        provider = get_provider(conversation.model)
+    except ValueError:
+        provider = "unknown"
+
+    return SystemPromptUpdateResponse(
+        status="updated",
+        conversation_id=conversation.id,
+        model=conversation.model,
+        provider=provider,
+        system_prompt=resolved_prompt,
+        system_prompt_length=len(resolved_prompt),
+    )

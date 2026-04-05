@@ -88,13 +88,16 @@ async def stream_chat(
                 messages=message_history,
                 temperature=request.temperature,
                 reasoning=request.reasoning,
+                system_prompt=conversation.system_prompt,
             ):
                 assistant_content += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
 
             # Get token counts and calculate cost
             metadata_messages = message_history
-            if request.reasoning:
+            if request.reasoning and not (
+                provider == "openai" and llm_client.uses_responses_api(request.model)
+            ):
                 metadata_messages = [
                     {"role": "system", "content": f"Reasoning level: {request.reasoning}."},
                     *message_history,
@@ -269,11 +272,12 @@ async def run_background_completion(
                 messages=message_history,
                 temperature=temperature,
                 reasoning=reasoning,
+                system_prompt=conversation.system_prompt,
             ):
                 assistant_content += token
 
             metadata_messages = message_history
-            if reasoning:
+            if reasoning and not (provider == "openai" and llm_client.uses_responses_api(model)):
                 metadata_messages = [
                     {"role": "system", "content": f"Reasoning level: {reasoning}."},
                     *message_history,

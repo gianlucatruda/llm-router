@@ -63,6 +63,15 @@ class SystemPromptUpdateRequest(BaseModel):
     system_text: str
 
 
+class SystemPromptUpdateResponse(BaseModel):
+    status: str
+    conversation_id: str
+    model: str
+    provider: str
+    system_prompt: str
+    system_prompt_length: int
+
+
 class UsageSummary(BaseModel):
     total_tokens_input: int
     total_tokens_output: int
